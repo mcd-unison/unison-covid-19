@@ -1,0 +1,479 @@
+---
+title: "COVID-19"
+output: 
+  flexdashboard::flex_dashboard:
+    theme: cosmo
+    social: [ "twitter", "facebook", "linkedin", "menu" ]
+    orientation: rows
+    source_code: embed
+    vertical_layout: fill
+    logo: logo-mcd-circ-60.png
+    favicon: favicon-mcd.png
+
+---
+
+```{r setup, include=FALSE}
+#------------------ Packages ------------------
+library(flexdashboard)
+
+# Aqui cargamos los datos de coronavirus de JHU
+
+
+`%>%` <- magrittr::`%>%`  
+
+#------------------ Colores ------------------
+# Set colors
+# https://www.w3.org/TR/css-color-3/#svg-color
+confirmados_color <- "purple"
+activos_color <- "#1f77b4"
+recuperados_color <- "forestgreen"
+decesos_color <- "red"
+
+#------------------ Datos del día------------------
+
+direccion <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
+archivo <- format(Sys.Date() - 1, "%m-%d-%Y.csv")
+df <- read.csv(paste(direccion, archivo, sep='')) 
+
+df_concentrado <- df %>% 
+  dplyr::group_by(Country_Region) %>%     
+  dplyr::summarise(
+    Confirmados = sum(Confirmed),
+    Recuperados = sum(Recovered),
+    Decesos = sum(Deaths)) %>%
+  dplyr::mutate(
+    Activos = Confirmados - ifelse(is.na(Recuperados), 0, Recuperados) 
+              - ifelse(is.na(Decesos), 0, Decesos)
+    ) %>%
+  dplyr::filter( 
+    Country_Region %in% c('Mexico', 'US', 'Italy', 'Spain', 'Argentina', 'Brazil')
+    ) %>%
+  dplyr::mutate(Pais = factor(Country_Region, levels = Country_Region)) %>%
+  dplyr::arrange(- Confirmados) %>%
+  dplyr::mutate(TasaRecuperacion = Recuperados / Confirmados,
+         TasaDeceso = Decesos / Confirmados)
+
+  
+
+#----------------Series de tiempo ----------------------
+
+direccion_ts <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_"
+
+dir_confirmados <- paste(direccion_ts, "confirmed_global.csv", sep="")
+dir_decesos <- paste(direccion_ts, "deaths_global.csv", sep="")
+dir_recuperados <- paste(direccion_ts, "recovered_global.csv", sep="")
+
+lee_serie <-function (dir, nombre){
+  df <- read.csv(dir, check.names=FALSE, stringsAsFactors=FALSE) %>%
+      dplyr::select(-Lat, -Long) %>% 
+      tidyr::pivot_longer(-(1:2), names_to="fecha", values_to=nombre) %>% 
+      dplyr::mutate(
+        fecha = as.Date(fecha, format="%m/%d/%y"),
+        `Pais` = `Country/Region`,
+        `Estado` = `Province/State`) %>%
+      dplyr::filter( fecha > "2020-02-27")
+}
+
+df_serie <- lee_serie(dir_confirmados, 'Confirmados') %>%
+  dplyr::inner_join(lee_serie(dir_recuperados, 'Recuperados')) %>%
+  dplyr::inner_join(lee_serie(dir_decesos, 'Decesos'))
+
+df_concentrado_serie <- df_serie %>%
+  dplyr::group_by(fecha, Pais) %>%
+  dplyr::summarise(
+    Confirmados = sum(Confirmados),
+    Recuperados = sum(Recuperados),
+    Decesos = sum(Decesos)
+    ) %>%
+  dplyr::mutate(
+    Activos = Confirmados - ifelse(is.na(Recuperados), 0, Recuperados) 
+               - ifelse(is.na(Decesos), 0, Decesos)
+    ) %>%
+  dplyr::filter( 
+    Pais %in% c('Mexico', 'US', 'Italy', 'Spain', 'Argentina', 'Brazil')
+    ) %>%
+  dplyr::mutate(Pais = factor(Pais, levels = Pais))
+
+df_concentrado_serie <- df_concentrado_serie %>%
+  dplyr::group_by(Pais) %>%
+  dplyr::mutate(
+    T_Confirmados = Confirmados - dplyr::lag(Confirmados, n= 1, default = NA),
+    T_Recuperados = Recuperados - dplyr::lag(Recuperados, n= 1, default = NA),
+    T_Decesos = Decesos - dplyr::lag(Decesos, n= 1, default = NA),
+    )
+
+max_date <- max(df_serie$fecha)
+
+
+```
+
+Resumen general
+=======================================================================
+Row
+-----------------------------------------------------------------------
+
+### Confirmados {.value-box}
+
+```{r}
+
+valueBox(value = paste(format(df_concentrado$Confirmados[df_concentrado$Pais == 'Mexico'], 
+                              big.mark = ","), "", sep = " "), 
+         caption = "Confirmados en México", 
+         icon = "fas fa-user-md", 
+         color = confirmados_color)
+```
+
+
+### Activos {.value-box}
+
+```{r}
+valueBox(value = paste(format(df_concentrado$Activos[df_concentrado$Pais == 'Mexico'], 
+                              big.mark = ","), "", sep = " "), 
+         caption = "Activos en México", 
+         icon = "fas fa-ambulance", 
+         color = activos_color)
+```
+
+### Recuperados {.value-box}
+
+```{r}
+valueBox(value = paste(format(df_concentrado$Recuperados[df_concentrado$Pais == 'Mexico'], 
+                              big.mark = ","), "", sep = ""), 
+         caption = "Recuperados en México", icon = "fas fa-heartbeat", 
+         color = recuperados_color)
+```
+
+### Decesos {.value-box}
+
+```{r}
+
+valueBox(value = paste(format(df_concentrado$Decesos[df_concentrado$Pais == 'Mexico'], 
+                              big.mark = ","), "", sep = " "),
+         caption = "Decesos en México", 
+         icon = "fas fa-heart-broken", 
+         color = decesos_color)
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+### **Distribución por tipo (Paises seleccionados)**
+
+```{r daily_summary}
+
+
+plotly::plot_ly(data = df_concentrado, 
+                x = ~ reorder(Pais, Confirmados), 
+                y = ~ Activos, 
+                type = "bar", 
+                name = "Activos",
+                marker = list(color = activos_color)) %>%
+  plotly::add_trace(y = ~ Recuperados, 
+                    name = "Recuperados",
+                    marker = list(color = recuperados_color)) %>%
+  plotly::add_trace(y = ~ Decesos, 
+                    name = "Decesos",
+                    marker = list(color = decesos_color)) %>%
+  plotly::layout(barmode = 'stack',
+                 yaxis = list(title = "Casos (escala logarítmica)",
+                              type = "log"),
+                 xaxis = list(title = ""),
+                 hovermode = "compare",
+                  margin =  list(
+                   # l = 60,
+                   # r = 40,
+                   b = 10,
+                   t = 10,
+                   pad = 2
+                 ))
+
+```
+
+Row {data-width=400}
+-----------------------------------------------------------------------
+
+
+### **Casos acumulados por tipo en México**
+    
+```{r}
+
+# plotly::plot_ly(df_daily, x = ~date, y = ~active_cum, name = 'Active', type = 'scatter', mode = 'none', stackgroup = 'one', fillcolor = "#1f77b4") %>%
+# plotly::add_trace(y = ~recovered_cum, name = 'Recovered', fillcolor = "green") %>%
+# plotly::add_trace(y = ~death_cum, name = "Death", fillcolor = "red") %>%
+#   plotly::layout(title = "",
+#          xaxis = list(title = "",
+#                       showgrid = FALSE),
+#          yaxis = list(title = "Cumulative Number of Cases",
+#                       showgrid = FALSE),
+#          legend = list(x = 0.1, y = 0.9),
+#                  hovermode = "compare")
+                 
+
+
+plotly::plot_ly(data = dplyr::filter(df_concentrado_serie, Pais=="Mexico")) %>%
+  plotly::add_trace(x = ~ fecha,
+                    y = ~ Activos,
+                    type = "scatter",
+                    mode = "lines+markers",
+                    name = "Activos",
+                    line = list(color = activos_color),
+                    marker = list(color = activos_color)) %>%
+  plotly::add_trace(x = ~ fecha,
+                    y = ~ Recuperados,
+                    type = "scatter",
+                    mode = "lines+markers",
+                    name = "Recuperados",
+                    line = list(color = recuperados_color),
+                    marker = list(color = recuperados_color)) %>%
+  plotly::add_trace(x = ~ fecha,
+                    y = ~ Decesos,
+                    type = "scatter",
+                    mode = 'lines+markers',
+                    name = "Decesos",
+                    line = list(color = decesos_color),
+                    marker = list(color = decesos_color)) %>%
+  plotly::layout(title = "",
+                 yaxis = list(title = "Numero de casos en México"),
+                 xaxis = list(title = "Fecha"),
+                 legend = list(x = 0.1, y = 0.9),
+                 hovermode = "compare")
+  
+
+```
+
+
+### **Tasas de recuperados y defunciones por país**
+    
+```{r}
+df_concentrado %>%
+  dplyr::select(Pais, Confirmados, Recuperados, Decesos, TasaRecuperacion, TasaDeceso) %>%
+  DT::datatable(rownames = FALSE,
+            colnames = c("País", "Confirmados", "Recuperados", "Decesos", "Tasa de Recuperados", "Tasa de Decesos"),
+            options = list(pageLength = nrow(df_concentrado), dom = 'tip')) %>%
+  DT::formatPercentage("TasaRecuperacion", 2) %>%
+  DT::formatPercentage("TasaDeceso", 2) 
+```
+
+
+Mapa
+=======================================================================
+
+**Mapa**
+
+```{r}
+# map tab added by Art Steinmetz
+library(leaflet)
+library(leafpop)
+
+cv_data_for_plot <- df %>% 
+  dplyr::filter(Confirmed > 0) %>% 
+  dplyr::group_by(Country_Region, Province_State, Lat, Long_, Admin2) %>% 
+  dplyr::summarise(
+    Confirmados = sum(Confirmed),
+    Recuperados = sum(Recovered),
+    Decesos = sum(Deaths),
+    Activos = sum(Active)
+    ) %>% 
+  dplyr::rename(
+    Pais = Country_Region,
+    Estado = Province_State,
+    Municipio = Admin2
+    ) %>%
+  dplyr::mutate(log_cases = 2 * log(Confirmados)) 
+
+pal <- colorFactor(
+  c("red"), 
+  domain = c("Confirmados"))
+
+map_object <- leaflet(options = leafletOptions(minZoom = 3, maxZoom = 10)) %>% 
+  addProviderTiles(providers$Stamen.Toner) %>%
+  setView(
+    lng = -105.167,
+    lat = 27.683,
+    zoom = 6
+    )
+
+map_object <<- map_object %>%
+  addCircleMarkers(
+  data=cv_data_for_plot,
+  lng=~Long_, lat=~Lat,
+  label=~as.character(Confirmados),
+  color = ~pal("Confirmados"),
+  stroke = FALSE,
+  fillOpacity = 0.8,
+  radius = ~log_cases,
+  popup =  leafpop::popupTable(
+    cv_data_for_plot,
+    feature.id = FALSE,
+    row.numbers = FALSE,
+    zcol=c("Pais", "Estado","Municipio", "Confirmados", "Recuperados", "Decesos")
+    ),
+  labelOptions = labelOptions(
+    noHide = F,
+    direction = 'auto'
+    )
+  )
+map_object
+
+# names(cv_data_for_plot.split) %>%
+#   purrr::walk( 
+#     function(df) {
+#       map_object <<- map_object %>%
+#         addCircleMarkers(
+#           data=cv_data_for_plot.split[[df]],
+#           lng=~Long_, lat=~Lat,
+# #         label=~as.character(cases),
+#           color = ~pal(tipo),
+#           stroke = FALSE,
+#           fillOpacity = 0.8,
+#           radius = ~log_cases,
+#           popup =  leafpop::popupTable(
+#             cv_data_for_plot.split[[df]],
+#             feature.id = FALSE,
+#             row.numbers = FALSE,
+#             zcol=c("tipo", "value","Country_Region", "Province_State")
+#           ),
+#           group = df,
+#           labelOptions = labelOptions(
+#               noHide = F,
+#               direction = 'auto'
+#           ),
+# 
+#           # clusterOptions = markerClusterOptions(removeOutsideVisibleBounds = F),
+#         )
+#     }
+#   )
+#   
+# map_object %>%
+#   addLayersControl(
+#     overlayGroups = names(cv_data_for_plot.split),
+#     options = layersControlOptions(collapsed = FALSE) 
+#   )
+```
+
+Tendencia
+=======================================================================
+
+
+Column {data-width=400}
+-------------------------------------
+    
+### **Casos nuevos para el (`r  max(df_serie$fecha)`)**
+    
+```{r}
+df_concentrado_serie %>%   
+  dplyr::filter(fecha == max_date) %>%
+  dplyr::arrange(T_Confirmados) %>%
+  plotly::plot_ly(x = ~T_Confirmados,
+                  y = ~reorder(Pais, T_Confirmados),
+                  text = ~T_Confirmados,
+                  textposition = 'auto',
+                  type = "bar", 
+                  orientation = 'h') %>%
+  plotly::layout(yaxis = list(title = "Casos nuevos"),
+                 xaxis = list(title = ""),
+                 margin =  list(
+                   l = 10,
+                   r = 10,
+                   b = 10,
+                   t = 10,
+                   pad = 2
+                 ))
+
+```
+
+
+### **Comparación de tendencias**
+    
+```{r}
+
+df_concentrado_serie %>% 
+  plotly::plot_ly(x = ~fecha, 
+                  y = ~T_Confirmados,
+                  type = "scatter", 
+                  mode = "lines+marker",
+                  color = ~Pais,
+                  name = ~Pais) %>% 
+  plotly::layout(yaxis = list(title = "Casos nuevos"),
+                 xaxis = list(title = "Fecha"),
+                 hovermode = "compare",
+                  margin =  list(
+                   # l = 60,
+                   # r = 40,
+                   b = 10,
+                   t = 10,
+                   pad = 2
+                 ))
+```
+   
+Column {data-width=600}
+-------------------------------------
+   
+### **Relación entre tasas de Recuperación y Deceso**
+
+```{r}
+
+df_concentrado %>%
+  plotly::plot_ly(y = ~ round(100 * TasaRecuperacion, 1),
+                  x = ~ round(100 * TasaDeceso, 1),
+                  size = ~  log(Confirmados),
+                  sizes = c(5, 70),
+                  type = 'scatter', mode = 'markers',
+                  color = ~Pais,
+                  marker = list(sizemode = 'diameter' , opacity = 0.5),
+                  hoverinfo = 'text',
+                  text = ~paste("</br>", Pais, 
+                                "</br> Confirmed Cases: ", Confirmados,
+                                "</br> Tasa Recuperación: ", paste(round(100 * TasaRecuperacion, 1), "%", sep = ""),
+                                "</br> Tasa Deceso: ",  paste(round(100 * TasaDeceso, 1), "%", sep = ""))
+                 ) %>%
+  plotly::layout(yaxis = list(title = "Tasa Recuperación", ticksuffix = "%"),
+                xaxis = list(title = "Tasa Deceso", ticksuffix = "%", 
+                             dtick = 1, 
+                             tick0 = 0),
+                hovermode = "compare")
+  
+```   
+ 
+### **Casos nuevos por pais al `r  max(df_concentrado_serie$fecha)`**
+    
+```{r}
+df_concentrado_serie %>% 
+  dplyr::filter(fecha == max(fecha)) %>%
+  dplyr::select(Pais, T_Confirmados, T_Recuperados, T_Decesos) %>%  
+  DT::datatable(
+    rownames = FALSE,
+    colnames = c("País", "Inc. Confirmados", "Inc. Recuperados", "Inc. Decesos"),
+                options = list(pageLength = nrow(df_concentrado_serie), dom = 'tip'))
+```
+
+Acerca de
+=======================================================================
+
+**Tablero básico sobre COVID-19 en México**
+
+Este tablero es uno de los diferentes recursos que se están poniendo a disposición por parte de la [Universidad de Sonora](https://www.unison.mx), por parte del gupo de profesores del cuerpo académico en [Ciencia de Datos](mcd.unison.mx). El tablero se realizó en  el lenguje *R* usando el lenguaje de marcado *Rmarkdown* y la plantilla [*flexdashboard for R*](https://rmarkdown.rstudio.com/flexdashboard/index.html). Nos basamos en un ejemplo base desarrollado por [Rami Krispin](https://twitter.com/Rami_Krispin) y el cual se puede consultar [aquí](https://github.com/RamiKrispin/coronavirus_dashboard).
+
+**Datos**
+
+Los datos que se están utilizando para este table son los que ofrece el [Centro de recursos sobre Coronavirus](https://coronavirus.jhu.edu) de la *Johns Hopkins University & Medicine*.
+Los datos se actualizan cada día a media noche) y se pueden obtener [aquí](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data). En el código del programa se muestra como descargar y tratar los datos en línea, descargando los archivos actualizados al día anterior.
+
+
+**Paquetes utilizados y documentación**
+
+* Tablero: [flexdashboard](https://rmarkdown.rstudio.com/flexdashboard/). 
+* Gráficas:  [plotly](https://plot.ly/r/).
+* Mapa: [leaflet](https://rstudio.github.io/leaflet/)
+* Manipulación de datos - [dplyr](https://dplyr.tidyverse.org/), y [tidyr](https://tidyr.tidyverse.org/)
+* Tablas: [DT](https://rstudio.github.io/DT/).
+
+**Reproducibilidad**
+
+El tablero se genera diariamente como una página web estática, por lo que se puede subir en cualquier sitio. Si deseas utilizarla, puede realizar un *fork* al [proyecto en github](https://github.com/mcd-unison/coronavirus_dashboard), descargarlo, modificarlo y publicar un tablero similar en las páginas web que desees.
+
+Para mayores preguntas puede contactar a [O. Gutú](mailto:olivia.gutu@unison.mx), [J.P. Soto](mailto:juanpablo.soto@unison.mx) o a [J. Waissman](mailto:julio.waissman@unison.mx).
+
+
+
