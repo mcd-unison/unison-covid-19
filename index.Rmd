@@ -1,11 +1,11 @@
 ---
-title: "COVID-19"
+title: "COVID-19 Sonora"
 output: 
   flexdashboard::flex_dashboard:
     theme: cosmo
-    social: [ "twitter", "facebook", "linkedin", "menu" ]
+    social: [ "twitter", "facebook", "linkedin"]
     orientation: rows
-    source_code: embed
+    source_code: https://github.com/mcd-unison/unison-covid-19
     vertical_layout: fill
     logo: logo-mcd-circ-60.png
     favicon: favicon-mcd.png
@@ -15,11 +15,13 @@ output:
 ```{r setup, include=FALSE}
 #------------------ Packages ------------------
 library(flexdashboard)
+library(tidyverse)
+library(magrittr)
 
 # Aqui cargamos los datos de coronavirus de JHU
 
 
-`%>%` <- magrittr::`%>%`  
+#`%>%` <- magrittr::`%>%`  
 
 #------------------ Colores ------------------
 # Set colors
@@ -29,85 +31,272 @@ activos_color <- "#1f77b4"
 recuperados_color <- "forestgreen"
 decesos_color <- "red"
 
-#------------------ Datos del día------------------
+#------------------ Datos Arizona------------------
 
 direccion <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
-archivo <- format(Sys.Date() - 1, "%m-%d-%Y.csv")
-df <- read.csv(paste(direccion, archivo, sep='')) 
+archivo <- format(Sys.Date()-1, "%m-%d-%Y.csv")
+fecha_actual <- Sys.Date() -1
 
-df_concentrado <- df %>% 
-  dplyr::group_by(Country_Region) %>%     
-  dplyr::summarise(
-    Confirmados = sum(Confirmed),
-    Recuperados = sum(Recovered),
-    Decesos = sum(Deaths)) %>%
-  dplyr::mutate(
-    Activos = Confirmados - ifelse(is.na(Recuperados), 0, Recuperados) 
-              - ifelse(is.na(Decesos), 0, Decesos)
-    ) %>%
+df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
+  dplyr::mutate(Fecha = as.Date(Last_Update)) %>%
+  dplyr::rename(
+    Municipio = Admin2,
+    Pais = Country_Region, 
+    Estado = Province_State,
+    Confirmados = Confirmed,
+    Recuperados = Recovered,
+    Decesos = Deaths,
+    Activos = Active,
+    Long = Long_
+  ) %>%
+  dplyr::select(
+    -FIPS, -Combined_Key, -Last_Update
+  )
+
+df_az <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
   dplyr::filter( 
-    Country_Region %in% c('Mexico', 'US', 'Italy', 'Spain', 'Argentina', 'Brazil')
+    Province_State %in% c('Arizona', 'Nacional')
+  ) %>%
+  dplyr::mutate(Fecha = as.Date(Last_Update)) %>%
+  dplyr::rename(
+    Municipio = Admin2,
+    Pais = Country_Region, 
+    Estado = Province_State,
+    Confirmados = Confirmed,
+    Recuperados = Recovered,
+    Decesos = Deaths,
+    Activos = Active,
+    Long = Long_
+  ) %>%
+  dplyr::select(
+    -FIPS, -Combined_Key, -Last_Update
+  )
+
+
+#---------------Datos México ----------------------------
+# Del repositorio de [Gabriel Alfonso Carranco-Sapiéns](https://github.com/carranco-sga/Mexico-COVID-19)
+dir_nac <- "https://raw.githubusercontent.com/carranco-sga/Mexico-COVID-19/master/Mexico_COVID19.csv"
+
+df_nac <- read.csv(dir_nac, stringsAsFactors = FALSE) %>% 
+  dplyr::rename_all(~sub('_D', '_Decesos', .x)) %>%
+  dplyr::rename_all(~sub('_I', '_Importados', .x)) %>%
+  dplyr::rename_all(~sub('_L', '_Locales', .x)) %>%
+  dplyr::rename_all(~sub('_R', '_Recuperados', .x)) %>%
+  dplyr::rename_all(~sub('_S', '_Sospechosos', .x)) %>%
+  dplyr::rename_at(
+    dplyr::vars(dplyr::matches("^[A-Z][A-Z][A-Z]$")),
+    dplyr::funs(paste(., "Confirmados", sep='_'))
+  ) %>%
+  dplyr::select(
+    -Pos_rep, -Susp_rep, -Neg_rep, -IRAG_Test, -Tested_tot
+  ) %>%
+  dplyr::rename(
+    Nacional_Confirmados = Pos_Confirmados,
+    Nacional_Recuperados = Recovered,
+    Nacional_Decesos = Deceased,
+    Nacional_Sospechosos = Susp,
+    Nacional_Importados = Pos_Importados,
+    Nacional_Locales = Pos_Locales
+  ) %>%
+  tidyr::pivot_longer(
+    cols = -Fecha,
+    names_to = c("Estado", "Tipo"),
+    names_pattern = "(.*)_(.*)",
+    values_to = "Casos"
+  ) %>%
+  dplyr::mutate(
+    Fecha = as.Date(Fecha),
+  )
+
+
+#------------------ Datos de Sonora y sus Municipios -------------
+# Obtenidos por Juan Pablo
+
+son.trans <- function(tipo){
+  df <- readxl::read_excel(
+    "data/DASBOARDCOVID-19.xlsx", sheet = tipo, skip = 3) %>%
+    tidyr::pivot_longer(
+      cols=dplyr::starts_with('4'),
+      names_to = "Fecha",
+      values_to = "Casos"
     ) %>%
-  dplyr::mutate(Pais = factor(Country_Region, levels = Country_Region)) %>%
-  dplyr::arrange(- Confirmados) %>%
-  dplyr::mutate(TasaRecuperacion = Recuperados / Confirmados,
-         TasaDeceso = Decesos / Confirmados)
-
-  
-
-#----------------Series de tiempo ----------------------
-
-direccion_ts <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_"
-
-dir_confirmados <- paste(direccion_ts, "confirmed_global.csv", sep="")
-dir_decesos <- paste(direccion_ts, "deaths_global.csv", sep="")
-dir_recuperados <- paste(direccion_ts, "recovered_global.csv", sep="")
-
-lee_serie <-function (dir, nombre){
-  df <- read.csv(dir, check.names=FALSE, stringsAsFactors=FALSE) %>%
-      dplyr::select(-Lat, -Long) %>% 
-      tidyr::pivot_longer(-(1:2), names_to="fecha", values_to=nombre) %>% 
-      dplyr::mutate(
-        fecha = as.Date(fecha, format="%m/%d/%y"),
-        `Pais` = `Country/Region`,
-        `Estado` = `Province/State`) %>%
-      dplyr::filter( fecha > "2020-02-27")
+    dplyr::mutate(
+      Fecha = as.Date(as.integer(Fecha) - 2, origin="1900-1-1"),
+      Tipo = ifelse(tipo == "Fallecidos", "Decesos", tipo),
+      Estado = "Sonora"
+    ) %>%
+    dplyr::rename(
+      Municipio = MUNICIPIO, 
+      Lat = LATITUD, Long = LONGITUD,
+    ) %>%
+    dplyr::select(-CLAVE, -PAIS)
 }
+df_son <- son.trans("Confirmados") %>%
+  dplyr::full_join(son.trans("Fallecidos")) %>%
+  dplyr::full_join(son.trans("Recuperados"))
 
-df_serie <- lee_serie(dir_confirmados, 'Confirmados') %>%
-  dplyr::inner_join(lee_serie(dir_recuperados, 'Recuperados')) %>%
-  dplyr::inner_join(lee_serie(dir_decesos, 'Decesos'))
-
-df_concentrado_serie <- df_serie %>%
-  dplyr::group_by(fecha, Pais) %>%
+#-------------Concentrado general ---------------------
+df_az_c <- df_az %>% 
+  dplyr::group_by(Estado) %>%     
   dplyr::summarise(
     Confirmados = sum(Confirmados),
     Recuperados = sum(Recuperados),
     Decesos = sum(Decesos)
-    ) %>%
-  dplyr::mutate(
-    Activos = Confirmados - ifelse(is.na(Recuperados), 0, Recuperados) 
-               - ifelse(is.na(Decesos), 0, Decesos)
-    ) %>%
-  dplyr::filter( 
-    Pais %in% c('Mexico', 'US', 'Italy', 'Spain', 'Argentina', 'Brazil')
-    ) %>%
-  dplyr::mutate(Pais = factor(Pais, levels = Pais))
+  ) %>%
+  dplyr::arrange(- Confirmados)
 
-df_concentrado_serie <- df_concentrado_serie %>%
-  dplyr::group_by(Pais) %>%
+df_nac_c <- df_nac  %>%
+  dplyr::filter(Estado %in% c('CHH', 'SIN', 'BCN')) %>%
+  dplyr::filter(Fecha == fecha_actual) %>%
+  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) %>%
+  dplyr::select(
+    -Fecha, -Sospechosos, -Locales, -Importados
+  ) %>%
   dplyr::mutate(
-    T_Confirmados = Confirmados - dplyr::lag(Confirmados, n= 1, default = NA),
-    T_Recuperados = Recuperados - dplyr::lag(Recuperados, n= 1, default = NA),
-    T_Decesos = Decesos - dplyr::lag(Decesos, n= 1, default = NA),
+    Estado = dplyr::recode(Estado,
+      'CHH' = 'Chihuahua',
+      'SIN' = 'Sinaloa',
+      'BCN' = 'Baja California',
+      .default = 'Otros'
     )
+  )
 
-max_date <- max(df_serie$fecha)
+df_mx_c <- df_nac  %>%
+  dplyr::filter(Fecha == fecha_actual) %>%
+  dplyr::filter(Estado == "Nacional") %>%
+  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) %>%
+  dplyr::select(
+    -Fecha, -Sospechosos, -Locales, -Importados
+  ) 
 
+df_son_c <- df_son %>%
+  dplyr::filter(Fecha == max(Fecha)) %>%
+  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) %>%
+  dplyr::select(-Fecha) %>%
+  dplyr::group_by(Estado) %>%     
+  dplyr::summarise(
+    Confirmados = sum(Confirmados, na.rm = TRUE),
+    Recuperados = sum(Recuperados, na.rm = TRUE),
+    Decesos = sum(Decesos, na.rm = TRUE)
+  ) %>%
+  dplyr::arrange(- Confirmados) %>%
+  tidyr::drop_na()
+
+df_c <- df_az_c %>%
+  dplyr::full_join(df_mx_c) %>%
+  dplyr::full_join(df_nac_c) %>%
+  dplyr::full_join(df_son_c) 
+  
+
+df_estados <- df_nac  %>%
+  dplyr::filter(Fecha == fecha_actual) %>%
+  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) %>%
+  dplyr::select(
+    -Fecha, -Locales, -Recuperados, -Sospechosos
+  ) %>%
+  dplyr::arrange(-Confirmados) %>%
+  dplyr::mutate(
+    T.Importados = Importados / Confirmados,
+    T.Deceso = Decesos / Confirmados,
+    Estado = dplyr::recode( Estado,
+      CMX = "Ciudad de México", MEX = "Estado de México", JAL = "Jalisco",
+      PUE = "Puebla", NLE = "Nuevo León", YUC = "Yucatán", TAB = "Tabasco",
+      ROO = "Quintana Roo", GUA = "Guanajuato", COA = "Coahuila", AGU = "Aguascalientes",
+      BCN = "Baja California", QUE = "Queretaro", SIN = "Sinaloa", VER = "Veracruz",
+      SLP = "San Luis Potosí",  MIC = "Michoacán", HID = "Hidalgo", BCS = "Baja California Sur",
+      SON = "Sonora", GRO = "Guerrero", OAX = "Oaxaca", CHP = "Chiapas", TAM = "Tamaulipas",
+      CHH = "Chihuahua", DUR = "Durango", MOR = "Morelos", NAY = "Nayarit", ZAC = "Zacatecas",
+      CAM = "Campeche", TLA = "Tlaxcala", COL = "Colima", Nacional = "Nacional", .default = 'Otros' 
+    )
+  ) 
+
+df_edos_t <- df_nac %>%
+  dplyr::mutate(
+    Estado = dplyr::recode( Estado,
+      CMX = "Ciudad de México", MEX = "Estado de México", JAL = "Jalisco",
+      PUE = "Puebla", NLE = "Nuevo León", YUC = "Yucatán", TAB = "Tabasco",
+      ROO = "Quintana Roo", GUA = "Guanajuato", COA = "Coahuila", AGU = "Aguascalientes",
+      BCN = "Baja California", QUE = "Queretaro", SIN = "Sinaloa", VER = "Veracruz",
+      SLP = "San Luis Potosí",  MIC = "Michoacán", HID = "Hidalgo", BCS = "Baja California Sur",
+      SON = "Sonora", GRO = "Guerrero", OAX = "Oaxaca", CHP = "Chiapas", TAM = "Tamaulipas",
+      CHH = "Chihuahua", DUR = "Durango", MOR = "Morelos", NAY = "Nayarit", ZAC = "Zacatecas",
+      CAM = "Campeche", TLA = "Tlaxcala", COL = "Colima", Nacional = "Nacional", .default = 'Otros'
+    )
+  ) %>%
+  dplyr::group_by(Estado, Tipo) %>%
+  dplyr::mutate(
+    Variacion = Casos - dplyr::lag(Casos)
+  ) %>%
+  dplyr::select(-Casos) %>%
+  tidyr::pivot_wider(names_from = Tipo, values_from = Variacion) %>%
+  dplyr::filter(Fecha == max(Fecha)) %>%
+  dplyr::arrange(-Confirmados)
+
+#----------------Series de tiempo ----------------------
+
+df_son_s <- df_nac  %>%
+  dplyr::filter(Estado == "SON") %>%
+  dplyr::filter(Fecha >= "2020-3-15") %>%
+  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) 
+
+df_mex_s <- df_nac %>%
+  dplyr::filter(Estado %in% c("SON", "Nacional", "SIN", "CHH", "BCN")) %>%
+  dplyr::filter(Fecha >= "2020-2-27") %>%
+  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) %>%
+  dplyr::select(Fecha, Estado, Confirmados) %>%
+  tidyr::pivot_wider(names_from = Estado, values_from = Confirmados)
+
+dir_az_s <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"
+
+df_az_s <- read.csv(dir_az_s, check.names=FALSE, stringsAsFactors=FALSE)  %>%
+  dplyr::select(-(1:6), -(8:11)) %>%
+  dplyr::rename(Estado = `Province_State`) %>%
+  dplyr::filter(Estado == "Arizona") %>%
+  tidyr::pivot_longer(
+    cols = -Estado,
+    names_to = "Fecha",
+    values_to = "Arizona"
+  ) %>%
+  dplyr::select(-Estado) %>%
+  dplyr::mutate(
+    Fecha = as.Date(Fecha, "%m/%d/%y")
+  ) %>%
+  dplyr::group_by(Fecha) %>%
+  dplyr::summarise(Arizona = sum(Arizona, na.rm = TRUE)) %>%
+  dplyr::filter(Fecha >= "2020-2-27")
+
+df_s <- df_mex_s %>% dplyr::left_join(df_az_s, by = "Fecha") %>%
+  dplyr::mutate(
+    t.SON = SON - dplyr::lag(SON),
+    t.CHH = CHH - dplyr::lag(CHH),
+    t.SIN = SIN - dplyr::lag(SIN),
+    t.BCN = BCN - dplyr::lag(BCN),
+    t.Nacional = Nacional - dplyr::lag(Nacional),
+    t.Arizona = Arizona - dplyr::lag(Arizona)
+  )
+
+### Los datos de la Secretaría de Salud
+
+df_sas <- readxl::read_excel("data/BASE COVID-19 - IDCL.xlsx", skip=4) %>%
+  dplyr::select(
+    Id = "ID", Edad = "EDAD", Sexo = "SEXO", 
+    Municipio = "MUNICIPIO DE RESIDENCIA",
+    Colonia = "COLONIA", Servicio = "SERVICIO MÉDICO", 
+    Contagio = "CONTACTO CON SOSPECHOSOS", 
+    Atencion = "TIPO DE ATENCIÓN", 
+    Tipo = "CLASIFICACIÓN FINAL", 
+    Fecha = "FECHA DE INICIO DE SÍNTOMAS"
+  ) %>%
+  tidyr::drop_na(Sexo)
+
+
+
+#  dplyr::mutate(TasaRecuperacion = Recuperados / Confirmados,
+#         TasaDeceso = Decesos / Confirmados) 
 
 ```
 
-Resumen general
+Resumen
 =======================================================================
 Row
 -----------------------------------------------------------------------
@@ -115,57 +304,66 @@ Row
 ### Confirmados {.value-box}
 
 ```{r}
-
-valueBox(value = paste(format(df_concentrado$Confirmados[df_concentrado$Pais == 'Mexico'], 
-                              big.mark = ","), "", sep = " "), 
-         caption = "Confirmados en México", 
-         icon = "fas fa-user-md", 
-         color = confirmados_color)
+valueBox(
+  value = paste(format(df_son_c$Confirmados, big.mark = ","), "", sep = " "), 
+  caption = "Casos Confirmados en Sonora", 
+  icon = "fas fa-user-md", 
+  color = confirmados_color
+)
 ```
 
 
 ### Activos {.value-box}
 
 ```{r}
-valueBox(value = paste(format(df_concentrado$Activos[df_concentrado$Pais == 'Mexico'], 
-                              big.mark = ","), "", sep = " "), 
-         caption = "Activos en México", 
-         icon = "fas fa-ambulance", 
-         color = activos_color)
+valueBox(
+  value = paste(
+    format(
+      df_son_c$Confirmados - df_son_c$Recuperados - df_son_c$Decesos, 
+      big.mark = ","
+    ), 
+    "", sep = " "
+  ), 
+  caption = "Casos Activos en Sonora", 
+  icon = "fas fa-ambulance", 
+  color = activos_color)
 ```
 
 ### Recuperados {.value-box}
 
 ```{r}
-valueBox(value = paste(format(df_concentrado$Recuperados[df_concentrado$Pais == 'Mexico'], 
-                              big.mark = ","), "", sep = ""), 
-         caption = "Recuperados en México", icon = "fas fa-heartbeat", 
-         color = recuperados_color)
+valueBox(
+  value = paste(format(df_son_c$Recuperados, big.mark = ","), "", sep = ""), 
+  caption = "Recuperados en Sonora", 
+  icon = "fas fa-heartbeat", 
+  color = recuperados_color
+)
 ```
 
 ### Decesos {.value-box}
 
 ```{r}
 
-valueBox(value = paste(format(df_concentrado$Decesos[df_concentrado$Pais == 'Mexico'], 
-                              big.mark = ","), "", sep = " "),
-         caption = "Decesos en México", 
-         icon = "fas fa-heart-broken", 
-         color = decesos_color)
+valueBox(
+  value = paste(format(df_son_c$Decesos, big.mark = ","), "", sep = " "),
+  caption = "Decesos en Sonora", 
+  icon = "fas fa-heart-broken", 
+  color = decesos_color
+)
 ```
 
 
-Row
+Row {data-width=400}
 -----------------------------------------------------------------------
 
-### **Distribución por tipo (Paises seleccionados)**
+### **Casos Confirmados**
 
 ```{r daily_summary}
 
 
-plotly::plot_ly(data = df_concentrado, 
-                x = ~ reorder(Pais, Confirmados), 
-                y = ~ Activos, 
+plotly::plot_ly(data = df_c, 
+                x = ~ reorder(Estado, Confirmados), 
+                y = ~ (Confirmados - ifelse(is.na(Recuperados), 0, Recuperados) - Decesos), 
                 type = "bar", 
                 name = "Activos",
                 marker = list(color = activos_color)) %>%
@@ -190,51 +388,62 @@ plotly::plot_ly(data = df_concentrado,
 
 ```
 
+### **Casos por estados**
+
+```{r}
+df_estados %>%
+  #dplyr::filter(Estado %in% c('Nacional','CMX','JAL','SON','CHH', 'SIN', 'BCN')) %>%
+  dplyr::arrange(-Confirmados) %>%
+  dplyr::select(Estado, Confirmados, Importados, T.Importados, Decesos, T.Deceso) %>%
+  DT::datatable(rownames = FALSE,
+            colnames = c("Estado", "Confirmados", "Importados", 
+                         "% Importados", "Decesos", "% Decesos"),
+            options = list(pageLength = nrow(df_estados), dom = 'tip')) %>%
+  DT::formatPercentage("T.Importados", 2) %>%
+  DT::formatPercentage("T.Deceso", 2) 
+```
+
+
+
 Row {data-width=400}
 -----------------------------------------------------------------------
 
 
-### **Casos acumulados por tipo en México**
+### **Evolución de Casos en Sonora**
     
 ```{r}
 
-# plotly::plot_ly(df_daily, x = ~date, y = ~active_cum, name = 'Active', type = 'scatter', mode = 'none', stackgroup = 'one', fillcolor = "#1f77b4") %>%
-# plotly::add_trace(y = ~recovered_cum, name = 'Recovered', fillcolor = "green") %>%
-# plotly::add_trace(y = ~death_cum, name = "Death", fillcolor = "red") %>%
-#   plotly::layout(title = "",
-#          xaxis = list(title = "",
-#                       showgrid = FALSE),
-#          yaxis = list(title = "Cumulative Number of Cases",
-#                       showgrid = FALSE),
-#          legend = list(x = 0.1, y = 0.9),
-#                  hovermode = "compare")
-                 
-
-
-plotly::plot_ly(data = dplyr::filter(df_concentrado_serie, Pais=="Mexico")) %>%
-  plotly::add_trace(x = ~ fecha,
-                    y = ~ Activos,
+plotly::plot_ly(data = df_son_s) %>%
+  plotly::add_trace(x = ~ Fecha,
+                    y = ~ Confirmados,
                     type = "scatter",
                     mode = "lines+markers",
-                    name = "Activos",
-                    line = list(color = activos_color),
-                    marker = list(color = activos_color)) %>%
-  plotly::add_trace(x = ~ fecha,
-                    y = ~ Recuperados,
+                    name = "Confirmados",
+                    line = list(color = confirmados_color),
+                    marker = list(color = confirmados_color)) %>%
+  plotly::add_trace(x = ~ Fecha,
+                    y = ~ Importados,
                     type = "scatter",
                     mode = "lines+markers",
-                    name = "Recuperados",
+                    name = "Importados",
                     line = list(color = recuperados_color),
                     marker = list(color = recuperados_color)) %>%
-  plotly::add_trace(x = ~ fecha,
-                    y = ~ Decesos,
+  plotly::add_trace(x = ~ Fecha,
+                    y = ~ Locales,
                     type = "scatter",
                     mode = 'lines+markers',
-                    name = "Decesos",
+                    name = "Locales",
+                    line = list(color = activos_color),
+                    marker = list(color = activos_color)) %>%
+  plotly::add_trace(x = ~ Fecha,
+                    y = ~ Sospechosos,
+                    type = "scatter",
+                    mode = 'lines+markers',
+                    name = "Sospechosos",
                     line = list(color = decesos_color),
                     marker = list(color = decesos_color)) %>%
   plotly::layout(title = "",
-                 yaxis = list(title = "Numero de casos en México"),
+                 yaxis = list(title = "Numero de casos totales"),
                  xaxis = list(title = "Fecha"),
                  legend = list(x = 0.1, y = 0.9),
                  hovermode = "compare")
@@ -243,16 +452,37 @@ plotly::plot_ly(data = dplyr::filter(df_concentrado_serie, Pais=="Mexico")) %>%
 ```
 
 
-### **Tasas de recuperados y defunciones por país**
+### **Evolución de Casos Confirmados**
     
 ```{r}
-df_concentrado %>%
-  dplyr::select(Pais, Confirmados, Recuperados, Decesos, TasaRecuperacion, TasaDeceso) %>%
-  DT::datatable(rownames = FALSE,
-            colnames = c("País", "Confirmados", "Recuperados", "Decesos", "Tasa de Recuperados", "Tasa de Decesos"),
-            options = list(pageLength = nrow(df_concentrado), dom = 'tip')) %>%
-  DT::formatPercentage("TasaRecuperacion", 2) %>%
-  DT::formatPercentage("TasaDeceso", 2) 
+plotly::plot_ly(data = df_s) %>%
+  plotly::add_trace(x = ~ Fecha,
+                    y = ~ SON,
+                    type = "scatter",
+                    mode = "lines+markers",
+                    name = "Sonora",
+                    line = list(color = confirmados_color),
+                    marker = list(color = confirmados_color)) %>%
+  plotly::add_trace(x = ~ Fecha,
+                    y = ~ Nacional,
+                    type = "scatter",
+                    mode = "lines+markers",
+                    name = "México",
+                    line = list(color = recuperados_color),
+                    marker = list(color = recuperados_color)) %>%
+  plotly::add_trace(x = ~ Fecha,
+                    y = ~ Arizona,
+                    type = "scatter",
+                    mode = 'lines+markers',
+                    name = "Arizona",
+                    line = list(color = activos_color),
+                    marker = list(color = activos_color)) %>%   
+  plotly::layout(title = "",
+                 yaxis = list(title = "Numero de casos totales"),
+                 xaxis = list(title = "Fecha"),
+                 legend = list(x = 0.1, y = 0.9),
+                 hovermode = "compare")
+
 ```
 
 
@@ -266,90 +496,85 @@ Mapa
 library(leaflet)
 library(leafpop)
 
-cv_data_for_plot <- df %>% 
-  dplyr::filter(Confirmed > 0) %>% 
-  dplyr::group_by(Country_Region, Province_State, Lat, Long_, Admin2) %>% 
-  dplyr::summarise(
-    Confirmados = sum(Confirmed),
-    Recuperados = sum(Recovered),
-    Decesos = sum(Deaths),
-    Activos = sum(Active)
-    ) %>% 
-  dplyr::rename(
-    Pais = Country_Region,
-    Estado = Province_State,
-    Municipio = Admin2
-    ) %>%
-  dplyr::mutate(log_cases = 2 * log(Confirmados)) 
-
-pal <- colorFactor(
-  c("red"), 
-  domain = c("Confirmados"))
-
-map_object <- leaflet(options = leafletOptions(minZoom = 3, maxZoom = 10)) %>% 
-  addProviderTiles(providers$Stamen.Toner) %>%
+map_object <- leaflet(
+  options = leafletOptions(minZoom = 5, maxZoom = 10)
+) %>% 
+  addTiles() %>%
+  #addProviderTiles(providers$Stamen.Toner) %>%
   setView(
     lng = -105.167,
     lat = 27.683,
     zoom = 6
-    )
+  )
+
+pal <- colorFactor(
+   c("red", "green", "blue"), 
+   domain = c("Arizona", "Estados", "Sonora")
+)
+
+az_map <- df_az %>%
+  dplyr::group_by(Estado, Municipio, Lat, Long) %>%    
+  dplyr::summarise(
+    Confirmados = sum(Confirmados),
+    Activos = sum(Activos),
+    Decesos = sum(Decesos),
+    Recuperados = sum(Recuperados)
+  ) 
 
 map_object <<- map_object %>%
   addCircleMarkers(
-  data=cv_data_for_plot,
-  lng=~Long_, lat=~Lat,
-  label=~as.character(Confirmados),
-  color = ~pal("Confirmados"),
-  stroke = FALSE,
-  fillOpacity = 0.8,
-  radius = ~log_cases,
-  popup =  leafpop::popupTable(
-    cv_data_for_plot,
-    feature.id = FALSE,
-    row.numbers = FALSE,
-    zcol=c("Pais", "Estado","Municipio", "Confirmados", "Recuperados", "Decesos")
+    data= az_map,
+    lng= ~Long, lat= ~Lat,
+    label= ~as.character(Confirmados),
+    color = ~pal("Arizona"),
+    stroke = FALSE, fillOpacity = 0.6,
+    radius = ~3*log(Confirmados),
+    popup =  leafpop::popupTable(
+      az_map,
+      feature.id = FALSE,
+      row.numbers = FALSE,
+      zcol=c("Estado","Municipio", "Confirmados", "Recuperados", "Decesos")
     ),
-  labelOptions = labelOptions(
-    noHide = F,
-    direction = 'auto'
+    labelOptions = labelOptions(
+      noHide = F,
+      direction = 'auto'
     )
   )
-map_object
 
-# names(cv_data_for_plot.split) %>%
-#   purrr::walk( 
-#     function(df) {
-#       map_object <<- map_object %>%
-#         addCircleMarkers(
-#           data=cv_data_for_plot.split[[df]],
-#           lng=~Long_, lat=~Lat,
-# #         label=~as.character(cases),
-#           color = ~pal(tipo),
-#           stroke = FALSE,
-#           fillOpacity = 0.8,
-#           radius = ~log_cases,
-#           popup =  leafpop::popupTable(
-#             cv_data_for_plot.split[[df]],
-#             feature.id = FALSE,
-#             row.numbers = FALSE,
-#             zcol=c("tipo", "value","Country_Region", "Province_State")
-#           ),
-#           group = df,
-#           labelOptions = labelOptions(
-#               noHide = F,
-#               direction = 'auto'
-#           ),
-# 
-#           # clusterOptions = markerClusterOptions(removeOutsideVisibleBounds = F),
-#         )
-#     }
-#   )
-#   
-# map_object %>%
-#   addLayersControl(
-#     overlayGroups = names(cv_data_for_plot.split),
-#     options = layersControlOptions(collapsed = FALSE) 
-#   )
+
+edos_map <-df_estados %>% dplyr::left_join(
+  read.csv("data/estados_latlon.csv", stringsAsFactors = FALSE),
+  by = "Estado"
+) %>%
+  dplyr::filter(Estado != "Nacional")
+
+map_object <<- map_object %>%
+  addCircleMarkers(
+    data= edos_map,
+    lng= ~Long, lat= ~Lat,
+    label= ~as.character(Confirmados),
+    color = ~pal("Estados"),
+    stroke = FALSE,
+    fillOpacity = 0.6,
+    radius = ~3*log(Confirmados),
+    popup =  leafpop::popupTable(
+      edos_map,
+      feature.id = FALSE,
+      row.numbers = FALSE,
+      zcol=c("Estado","Confirmados", "Importados", "Decesos")
+    ),
+    labelOptions = labelOptions(
+      noHide = F,
+      direction = 'auto'
+    )
+  )
+
+ 
+map_object #%>%
+#  addLayersControl(
+#    overlayGroups = c("Arizona", "Estados"),
+#    options = layersControlOptions(collapsed = FALSE) 
+#)
 ```
 
 Tendencia
@@ -359,20 +584,39 @@ Tendencia
 Column {data-width=400}
 -------------------------------------
     
-### **Casos nuevos para el (`r  max(df_serie$fecha)`)**
+### **Casos nuevos para el `r  max(df_s$fecha)`**
     
 ```{r}
-df_concentrado_serie %>%   
-  dplyr::filter(fecha == max_date) %>%
-  dplyr::arrange(T_Confirmados) %>%
-  plotly::plot_ly(x = ~T_Confirmados,
-                  y = ~reorder(Pais, T_Confirmados),
-                  text = ~T_Confirmados,
+df_s2 <- df_s
+df_s2$t.Arizona[df_s2$Fecha == max(df_s2$Fecha)] <- df_s2$t.Arizona[df_s2$Fecha == max(df_s2$Fecha) - 1]
+
+
+df_s2 %>%   
+  dplyr::filter(Fecha == max(df_s2$Fecha)) %>%
+  dplyr::select(Fecha, t.SON, t.Nacional, t.Arizona, t.CHH, t.SIN, t.BCN) %>%
+  dplyr::rename(
+    Nacional = t.Nacional,
+    Arizona = t.Arizona,
+    Sonora = t.SON,
+    Chihuahua = t.CHH,
+    Sinaloa = t.SIN,
+    `Baja California` = t.BCN
+  ) %>%
+  tidyr::pivot_longer(
+    cols = -Fecha,
+    names_to = "Estado",
+    values_to = "N.Confirmados"
+  ) %>%
+  plotly::plot_ly(x = ~N.Confirmados,
+                  y = ~reorder(Estado, N.Confirmados),
+                  text = ~N.Confirmados,
                   textposition = 'auto',
                   type = "bar", 
                   orientation = 'h') %>%
-  plotly::layout(yaxis = list(title = "Casos nuevos"),
-                 xaxis = list(title = ""),
+  plotly::layout(yaxis = list(title = "", zeroline = FALSE, showline = FALSE, 
+                              showticklabels = TRUE, showgrid = FALSE),
+                 xaxis = list(title = "", zeroline = FALSE, showline = FALSE, 
+                              showticklabels = FALSE, showgrid = FALSE),
                  margin =  list(
                    l = 10,
                    r = 10,
@@ -383,18 +627,83 @@ df_concentrado_serie %>%
 
 ```
 
+### **Casos nuevos por estado en el día `r  max(df_edos_t$fecha)`**
 
-### **Comparación de tendencias**
+```{r}
+df_edos_t %>% dplyr::select(Estado, Confirmados, Locales, Decesos) %>%
+  DT::datatable(
+    rownames = FALSE,
+    colnames = c("Estado", "Nuevos Confirmados", "Nuevos Locales", "Nuevos Decesos"),
+                options = list(pageLength = nrow(df_edos_t), dom = 'tip'))
+```
     
+   
+Column {data-width=600}
+-------------------------------------
+   
+### **Relación de Casos Confirmados por Población y por Densidad de Población**
+
 ```{r}
 
-df_concentrado_serie %>% 
-  plotly::plot_ly(x = ~fecha, 
-                  y = ~T_Confirmados,
+df_poblacion <- data.frame(
+  "Poblacion" = c(3406465, 2767761, 3155070, 2662480, 112336538, 6828065), 
+  "Densidad" = c(14.4, 51.7, 46.4, 15.9, 61, 22.34),
+  "Estado" = c("Chihuahua","Sinaloa", "Baja California", 
+               "Sonora", "Nacional", "Arizona")
+)
+ 
+ 
+df_c %>% dplyr::left_join(df_poblacion) %>%
+  dplyr::mutate(
+    p.Confirmados = 100000 * Confirmados / Poblacion,
+  ) %>%
+  plotly::plot_ly(y = ~ p.Confirmados,
+                  x = ~ Densidad,
+                  size = ~  log(Confirmados),
+                  sizes = c(5, 70),
+                  type = 'scatter', mode = 'markers',
+                  color = ~Estado,
+                  marker = list(sizemode = 'diameter' , opacity = 0.5),
+                  hoverinfo = 'text',
+                  text = ~paste("</br>", Estado, 
+                                "</br> Casos Confirmados: ", Confirmados,
+                                "</br> Decesos: ", Decesos,
+                                "</br> Confirmados por 100K Hab: ", p.Confirmados,
+                                "</br> Densidad de pob (Hab/m2): ", Densidad
+                                )
+                 ) %>%
+  plotly::layout(yaxis = list(title = "Confirmados por 100k habitantes"),
+                xaxis = list(title = "Densidad de Población"),
+                hovermode = "compare")
+  
+```   
+
+### **Evolución de Nuevos Casos**
+ 
+```{r}
+
+df_s %>% 
+  dplyr::select(Fecha, t.SON, t.Nacional, t.Arizona, t.CHH, t.SIN, t.BCN) %>%
+  dplyr::rename(
+    Nacional = t.Nacional,
+    Arizona = t.Arizona,
+    Sonora = t.SON,
+    Chihuahua = t.CHH,
+    Sinaloa = t.SIN,
+    `Baja California` = t.BCN
+  ) %>%
+  tidyr::pivot_longer(
+    cols = -Fecha,
+    names_to = "Estado",
+    values_to = "N.Confirmados"
+  ) %>%
+  plotly::plot_ly(x = ~Fecha, 
+                  y = ~N.Confirmados,
                   type = "scatter", 
-                  mode = "lines+marker",
-                  color = ~Pais,
-                  name = ~Pais) %>% 
+                  mode = "lines+markers",
+                  color = ~Estado,
+                  marker = list(width = 1),
+                  name = ~Estado) %>% 
   plotly::layout(yaxis = list(title = "Casos nuevos"),
                  xaxis = list(title = "Fecha"),
                  hovermode = "compare",
@@ -406,47 +715,7 @@ df_concentrado_serie %>%
                    pad = 2
                  ))
 ```
-   
-Column {data-width=600}
--------------------------------------
-   
-### **Relación entre tasas de Recuperación y Deceso**
-
-```{r}
-
-df_concentrado %>%
-  plotly::plot_ly(y = ~ round(100 * TasaRecuperacion, 1),
-                  x = ~ round(100 * TasaDeceso, 1),
-                  size = ~  log(Confirmados),
-                  sizes = c(5, 70),
-                  type = 'scatter', mode = 'markers',
-                  color = ~Pais,
-                  marker = list(sizemode = 'diameter' , opacity = 0.5),
-                  hoverinfo = 'text',
-                  text = ~paste("</br>", Pais, 
-                                "</br> Confirmed Cases: ", Confirmados,
-                                "</br> Tasa Recuperación: ", paste(round(100 * TasaRecuperacion, 1), "%", sep = ""),
-                                "</br> Tasa Deceso: ",  paste(round(100 * TasaDeceso, 1), "%", sep = ""))
-                 ) %>%
-  plotly::layout(yaxis = list(title = "Tasa Recuperación", ticksuffix = "%"),
-                xaxis = list(title = "Tasa Deceso", ticksuffix = "%", 
-                             dtick = 1, 
-                             tick0 = 0),
-                hovermode = "compare")
-  
-```   
- 
-### **Casos nuevos por pais al `r  max(df_concentrado_serie$fecha)`**
     
-```{r}
-df_concentrado_serie %>% 
-  dplyr::filter(fecha == max(fecha)) %>%
-  dplyr::select(Pais, T_Confirmados, T_Recuperados, T_Decesos) %>%  
-  DT::datatable(
-    rownames = FALSE,
-    colnames = c("País", "Inc. Confirmados", "Inc. Recuperados", "Inc. Decesos"),
-                options = list(pageLength = nrow(df_concentrado_serie), dom = 'tip'))
-```
 
 Acerca de
 =======================================================================
