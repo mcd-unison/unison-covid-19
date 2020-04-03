@@ -690,11 +690,11 @@ plotly::plot_ly(data = df_son_s) %>%
 ```{r}
 df_municipios %>%
   dplyr::arrange(-Confirmados) %>%
-  dplyr::select(Municipio, Confirmados, Importados, Recuperados, Decesos) %>%
+  dplyr::select(Municipio, Confirmados, Recuperados, Decesos) %>%
   knitr::kable()
 
     # DT::datatable(rownames = FALSE,
-    #         colnames = c("Municipio", "Confirmados", "Importados", 
+    #         colnames = c("Municipio", "Confirmados",
     #                      "Recuperados", "Decesos"),
     #         options = list(pageLength = nrow(df_estados), dom = 'tip')) 
 
