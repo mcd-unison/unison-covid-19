@@ -711,6 +711,9 @@ Row
 
 ```{r}
 
+pie.colores <- c(activos_color, decesos_color, recuperados_color, confirmados_color,
+                 'light-blue', 'pale-yellow', 'teal', 'pink', 'indigo', 'orange', 'cyan')
+
 df_sssc %>%
   dplyr::group_by(Servicio.Medico) %>%
   dplyr::summarise(Casos = n()) %>%
@@ -722,7 +725,7 @@ df_sssc %>%
     textinfo = 'label+percent',
     hoverinfo = 'text',
     text = ~paste(Casos, ifelse(Casos == 1, ' caso', ' casos')),
-    domain = list(row = 1, column = 0)
+    marker = list(colors = pie.colores)
   ) %>%
   plotly::layout(title = ' ',
          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
