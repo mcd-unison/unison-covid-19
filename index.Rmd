@@ -755,7 +755,7 @@ Acerca de
 
 **Dashboard Unison COVID-19 Sonora**
 
-Este tablero es un recurso elaborado un grupo de profesores del [Departamento de Matemáticas](https://www.mat.uson.mx) de la [Universidad de Sonora](https://www.unison.mx) del área de [Ciencia de Datos](mcd.unison.mx). El tablero se realizó en el lenguje *R* usando el lenguaje de marcado *Rmarkdown* y la plantilla [*flexdashboard for R*](https://rmarkdown.rstudio.com/flexdashboard/index.html). Nos basamos en un ejemplo base desarrollado por [Rami Krispin](https://twitter.com/Rami_Krispin) y el cual se puede consultar [aquí](https://github.com/RamiKrispin/coronavirus_dashboard).
+Este tablero es un recurso elaborado por un grupo de profesores del [Departamento de Matemáticas](https://www.mat.uson.mx) de la [Universidad de Sonora](https://www.unison.mx) del área de [Ciencia de Datos](https://mcd.unison.mx). El tablero se realizó en el lenguje *R* usando el lenguaje de marcado *Rmarkdown* y la plantilla [*flexdashboard for R*](https://rmarkdown.rstudio.com/flexdashboard/index.html). Nos basamos en un ejemplo base desarrollado por [Rami Krispin](https://twitter.com/Rami_Krispin) y el cual se puede consultar [aquí](https://github.com/RamiKrispin/coronavirus_dashboard).
 
 **Datos**
 
