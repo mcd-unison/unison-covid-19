@@ -355,7 +355,7 @@ plotly::plot_ly(data = df_c,
                     name = "Decesos",
                     marker = list(color = decesos_color)) %>%
   plotly::layout(barmode = 'stack',
-                 yaxis = list(title = "Casos (log)"), #, type = "log"),
+                 yaxis = list(title = "Casos (log)", type = "log"),
                  xaxis = list(title = ""),
                  hovermode = "compare",
                   margin =  list(
