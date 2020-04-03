@@ -385,7 +385,7 @@ plotly::plot_ly(data = df_s) %>%
                     y = ~ Nacional,
                     type = "scatter",
                     mode = "lines+markers",
-                    name = "México",
+                    name = "Nacional",
                     line = list(color = recuperados_color),
                     marker = list(color = recuperados_color)) %>%
   plotly::add_trace(x = ~ Fecha,
