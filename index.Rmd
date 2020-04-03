@@ -341,8 +341,10 @@ Row
 
 ```{r daily_summary}
 
+df_pp <- df_c %>%
+  dplyr::filter(Estado %in% c("Sonora", "Chihuahua", "Baja California", "Sinaloa")) 
 
-plotly::plot_ly(data = df_c, 
+plotly::plot_ly(data = df_pp, 
                 x = ~ reorder(Estado, Confirmados), 
                 y = ~ (Confirmados - ifelse(is.na(Recuperados), 0, Recuperados) - Decesos), 
                 type = "bar", 
