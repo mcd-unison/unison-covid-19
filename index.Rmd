@@ -506,8 +506,8 @@ map_object <- leaflet(
   addTiles() %>%
   #addProviderTiles(providers$Stamen.Toner) %>%
   setView(
-    lng = -105.167,
-    lat = 27.683,
+    lng = -110.8269,
+    lat = 29.4720,
     zoom = 6
   )
 
@@ -691,10 +691,13 @@ plotly::plot_ly(data = df_son_s) %>%
 df_municipios %>%
   dplyr::arrange(-Confirmados) %>%
   dplyr::select(Municipio, Confirmados, Importados, Recuperados, Decesos) %>%
-  DT::datatable(rownames = FALSE,
-            colnames = c("Municipio", "Confirmados", "Importados", 
-                         "Recuperados", "Decesos"),
-            options = list(pageLength = nrow(df_estados), dom = 'tip')) 
+  knitr::kable()
+
+    # DT::datatable(rownames = FALSE,
+    #         colnames = c("Municipio", "Confirmados", "Importados", 
+    #                      "Recuperados", "Decesos"),
+    #         options = list(pageLength = nrow(df_estados), dom = 'tip')) 
+
 ```
 
     
