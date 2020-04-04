@@ -33,7 +33,7 @@ decesos_color <- "#FF1493"
 #--------------- Datos Arizona------------------
 
 direccion <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
-archivo <- format(Sys.Date(), "%m-%d-%Y.csv")
+archivo <- format(Sys.Date()-1, "%m-%d-%Y.csv")
 fecha_actual <- Sys.Date()
 
 df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
@@ -108,8 +108,8 @@ df_nac <- read.csv(dir_nac, stringsAsFactors = FALSE) %>%
   )
 
 df_estados <- df_nac  %>%
-  dplyr::filter(Fecha == fecha_actual) %>%
-  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) %>%
+  dplyr::filter(Fecha == max(Fecha)) %>%
+  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) %>% 
   dplyr::select(
     -Fecha, -Locales, -Recuperados, -Sospechosos
   ) %>%
@@ -767,7 +767,7 @@ Este tablero es un recurso elaborado por un grupo de profesores del [Departament
 **Datos**
 
 Los datos sobre el proceso del COVID-19 en el Estado de Sonora se reciben diariamente de la [Secretaría de Salud del Estado de Sonora](https://www.sonora.gob.mx/temas-de-interes/salud.html), gracias a la colaboración entre la Universidad de Sonora y el Gobierno del Estado durante este periodo excepcional.
-Los datos sobre el proceso del COVID-19 de los estados de México se tomaron del [repositorio de datos manenido por Gabriel Alfonso Carranco-Sapiéns](https://github.com/carranco-sga/Mexico-COVID-19). Esta base se actualiza cada día a partir de la información de la [SSA](https://www.gob.mx/salud). Los datos sobre la población de México se tomaron de [INEGI](https://www.inegi.org.mx/app/tabulados/interactivos/?px=Poblacion_07&bd=Poblacion).
+Los datos sobre el proceso del COVID-19 de los estados de México se tomaron del [repositorio de datos mantenido por Gabriel Alfonso Carranco-Sapiéns](https://github.com/carranco-sga/Mexico-COVID-19). Esta base se actualiza cada día a partir de la información de la [SSA](https://www.gob.mx/salud). Los datos sobre la población de México se tomaron de [INEGI](https://www.inegi.org.mx/app/tabulados/interactivos/?px=Poblacion_07&bd=Poblacion).
 Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del [Centro de recursos sobre Coronavirus](https://coronavirus.jhu.edu) de la Universidad Johns Hopkins University & Medicine. Esta base de datos se actualizan cada día a media noche y se pueden obtener [aquí](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data). 
 
 **Paquetes utilizados y documentación**
