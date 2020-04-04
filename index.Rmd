@@ -33,8 +33,8 @@ decesos_color <- "#FF1493"
 #--------------- Datos Arizona------------------
 
 direccion <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
-archivo <- format(Sys.Date()-1, "%m-%d-%Y.csv")
-fecha_actual <- Sys.Date() -1
+archivo <- format(Sys.Date(), "%m-%d-%Y.csv")
+fecha_actual <- Sys.Date()
 
 df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
   dplyr::mutate(Fecha = as.Date(Last_Update)) %>%
@@ -175,7 +175,7 @@ df_az_c <- df_az %>%
 
 df_nac_c <- df_nac  %>%
   dplyr::filter(Estado %in% c('CHH', 'SIN', 'BCN', 'SON', 'Nacional')) %>%
-  dplyr::filter(Fecha == fecha_actual) %>%
+  dplyr::filter(Fecha == max(Fecha)) %>%
   tidyr::pivot_wider(names_from = Tipo, values_from = Casos) %>%
   dplyr::select(
     -Fecha, -Sospechosos, -Locales, -Importados
@@ -469,7 +469,7 @@ df_s2 %>%
   ) %>%
   plotly::plot_ly(x = ~N.Confirmados,
                   y = ~reorder(Estado, N.Confirmados),
-                  text = ~N.Confirmados,
+                  #text = ~N.Confirmados,
                   textposition = 'auto',
                   type = "bar", 
                   marker = list(color = confirmados_color),
