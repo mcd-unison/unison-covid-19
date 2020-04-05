@@ -159,7 +159,7 @@ df_municipios <- df_sss %>%
   dplyr::summarise(
     Confirmados = n(),
     Importados = sum(as.numeric(Viaje), na.rm = TRUE),
-    Decesos = sum(as.numeric(Final == "Deceso"), na.rm = TRUE),
+    Decesos = sum(as.numeric(Final == "DEFUNCION"), na.rm = TRUE),
     Recuperados = sum(as.numeric(Final == "RECUPERADO"), na.rm=TRUE)
   )
 
