@@ -33,7 +33,7 @@ decesos_color <- "#FF1493"
 #--------------- Datos Arizona------------------
 
 direccion <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
-archivo <- format(Sys.Date()-1, "%m-%d-%Y.csv")
+archivo <- format(Sys.Date(), "%m-%d-%Y.csv")
 fecha_actual <- Sys.Date()
 
 df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
@@ -132,7 +132,7 @@ df_estados <- df_nac  %>%
 
 #--------------- Datos de Sonora y sus Municipios -------------
 
-df_sss <- readxl::read_excel("data/COVID-19.xlsx", skip = 4) %>%
+df_sss <- readxl::read_excel("data/COVID-19.xlsx", skip = 4, sheet = 1) %>%
   dplyr::select(EDAD, SEXO, `MUNICIPIO DE RESIDENCIA`, `SERVICIO MÉDICO`, 
                 `CONTACTO CON SOSPECHOSOS`, "ANTECEDENTE DE VIAJE A REGION DE RIESGO",
                 `TIPO DE ATENCIÓN`, `CLASIFICACIÓN FINAL`, `FECHA DE CLASIFICACIÓN FINAL`, 
@@ -154,7 +154,7 @@ df_sss <- readxl::read_excel("data/COVID-19.xlsx", skip = 4) %>%
   )
 
 df_municipios <- df_sss %>%
-  dplyr::filter(Resultado=="SARS-CoV-2 InDRE") %>%
+  dplyr::filter(str_detect(Resultado, "SARS-CoV-2")) %>%
   dplyr::group_by(Municipio) %>%
   dplyr::summarise(
     Confirmados = n(),
@@ -191,7 +191,7 @@ df_nac_c <- df_nac  %>%
     )
   )
 
-df_sssc <- df_sss %>% dplyr::filter(Resultado == "SARS-CoV-2 InDRE")
+df_sssc <- df_sss %>% dplyr::filter(str_detect(Resultado, "SARS-CoV-2"))
 df_son_c <- data.frame(
   Estado = "Sonora",
   Confirmados = nrow(df_sssc),
@@ -202,6 +202,7 @@ df_son_c <- data.frame(
 df_c <- df_az_c %>%
   dplyr::full_join(df_nac_c) 
 df_c$Recuperados[df_c$Estado == "Sonora"] = df_son_c$Recuperados
+df_c$Confirmados[df_c$Estado == "Sonora"] = df_son_c$Confirmados
 
 df_edos_t <- df_nac %>%
   dplyr::mutate(
