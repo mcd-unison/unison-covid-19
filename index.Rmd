@@ -470,7 +470,7 @@ df_s2 %>%
   ) %>%
   plotly::plot_ly(x = ~N.Confirmados,
                   y = ~reorder(Estado, N.Confirmados),
-                  #text = ~N.Confirmados,
+                  text = ~N.Confirmados,
                   textposition = 'auto',
                   type = "bar", 
                   marker = list(color = confirmados_color),
