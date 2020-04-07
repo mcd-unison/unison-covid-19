@@ -28,12 +28,13 @@ library(magrittr)
 confirmados_color <- "purple"
 activos_color <- "#0000CD"
 recuperados_color <- "#46B861"
-decesos_color <- "#FF1493"
+decesos_color <- "darkgrey"
+#decesos_color <- "#FF1493"
 
 #--------------- Datos Arizona------------------
 
 direccion <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
-archivo <- format(Sys.Date(), "%m-%d-%Y.csv")
+archivo <- format(Sys.Date()-1, "%m-%d-%Y.csv")
 fecha_actual <- Sys.Date()
 
 df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
@@ -121,7 +122,7 @@ df_estados <- df_nac  %>%
       CMX = "Ciudad de México", MEX = "Estado de México", JAL = "Jalisco",
       PUE = "Puebla", NLE = "Nuevo León", YUC = "Yucatán", TAB = "Tabasco",
       ROO = "Quintana Roo", GUA = "Guanajuato", COA = "Coahuila", AGU = "Aguascalientes",
-      BCN = "Baja California", QUE = "Queretaro", SIN = "Sinaloa", VER = "Veracruz",
+      BCN = "Baja California", QUE = "Querétaro", SIN = "Sinaloa", VER = "Veracruz",
       SLP = "San Luis Potosí",  MIC = "Michoacán", HID = "Hidalgo", BCS = "Baja California Sur",
       SON = "Sonora", GRO = "Guerrero", OAX = "Oaxaca", CHP = "Chiapas", TAM = "Tamaulipas",
       CHH = "Chihuahua", DUR = "Durango", MOR = "Morelos", NAY = "Nayarit", ZAC = "Zacatecas",
@@ -132,7 +133,7 @@ df_estados <- df_nac  %>%
 
 #--------------- Datos de Sonora y sus Municipios -------------
 
-df_sss <- readxl::read_excel("data/COVID-19.xlsx", skip = 4, sheet = 1) %>%
+df_sss <- readxl::read_excel("../data/COVID-19.xlsx", skip = 4, sheet = 1) %>%
   select(
     EDAD, SEXO, `MUNICIPIO DE RESIDENCIA`, `SERVICIO MÉDICO`, 
     `CONTACTO CON SOSPECHOSOS`, "ANTECEDENTE DE VIAJE A REGION DE RIESGO",
@@ -218,7 +219,7 @@ df_edos_t <- df_nac %>%
       CMX = "Ciudad de México", MEX = "Estado de México", JAL = "Jalisco",
       PUE = "Puebla", NLE = "Nuevo León", YUC = "Yucatán", TAB = "Tabasco",
       ROO = "Quintana Roo", GUA = "Guanajuato", COA = "Coahuila", AGU = "Aguascalientes",
-      BCN = "Baja California", QUE = "Queretaro", SIN = "Sinaloa", VER = "Veracruz",
+      BCN = "Baja California", QUE = "Querétaro", SIN = "Sinaloa", VER = "Veracruz",
       SLP = "San Luis Potosí",  MIC = "Michoacán", HID = "Hidalgo", BCS = "Baja California Sur",
       SON = "Sonora", GRO = "Guerrero", OAX = "Oaxaca", CHP = "Chiapas", TAM = "Tamaulipas",
       CHH = "Chihuahua", DUR = "Durango", MOR = "Morelos", NAY = "Nayarit", ZAC = "Zacatecas",
@@ -514,7 +515,7 @@ df_c %>% dplyr::left_join(df_poblacion) %>%
   
 ```   
 
-### **Casos nuevos para el `r  max(df_s$Fecha)`**
+### **Casos nuevos Confirmados al `r  format(as.Date(max(df_s$Fecha)), "%d/%m/%y")`**
     
 ```{r}
 df_s2 <- df_s
@@ -646,7 +647,7 @@ map_object <<- map_object %>%
 
 #-----------------Segunda Capa: Estados----------------------------
 edos_map <-df_estados %>% dplyr::left_join(
-  read.csv("data/estados_latlon.csv", stringsAsFactors = FALSE),
+  read.csv("../data/estados_latlon.csv", stringsAsFactors = FALSE),
   by = "Estado"
 ) %>%
   dplyr::filter(Estado != "Nacional") %>%
@@ -658,7 +659,7 @@ map_object <<- map_object %>%
 
 #-----------------Tercera Capa: Municipios Sonora----------------
 mun_map <- df_municipios %>% dplyr::left_join(
-  read.csv("data/municipios_latlon.csv", stringsAsFactors = FALSE),
+  read.csv("../data/municipios_latlon.csv", stringsAsFactors = FALSE),
   by = "Municipio"
 )
 
@@ -932,6 +933,6 @@ Las cantidades corresponden a las mediciones hechas a partir del día 2 de marzo
 El tablero se genera diariamente como una página web estática. Es posible realizar un *fork* al [proyecto en Github](https://github.com/mcd-unison/coronavirus_dashboard), descargarlo, modificarlo y publicar un tablero similar en las páginas web que desees.
 
 **Contacto**
-[O. Gutú](mailto:olivia.gutu@unison.mx) | [J. P.  Soto](mailto:juanpablo.soto@unison.mx) | [J. Waissman](mailto:julio.waissman@unison.mx)
+[O. Gutú](mailto:olivia.gutu@unison.mx) | [C. Minjárez](mailto:carlos.minjarez@unison.mx) |[J. P.  Soto](mailto:juanpablo.soto@unison.mx) | [J. Waissman](mailto:julio.waissman@unison.mx)
 
 
