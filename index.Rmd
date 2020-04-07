@@ -37,8 +37,8 @@ archivo <- format(Sys.Date(), "%m-%d-%Y.csv")
 fecha_actual <- Sys.Date()
 
 df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
-  dplyr::mutate(Fecha = as.Date(Last_Update)) %>%
-  dplyr::rename(
+  mutate(Fecha = as.Date(Last_Update)) %>%
+  rename(
     Municipio = Admin2,
     Pais = Country_Region, 
     Estado = Province_State,
@@ -48,16 +48,16 @@ df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
     Activos = Active,
     Long = Long_
   ) %>%
-  dplyr::select(
+  select(
     -FIPS, -Combined_Key, -Last_Update
   )
 
 df_az <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
-  dplyr::filter( 
+  filter( 
     Province_State %in% c('Arizona', 'Nacional')
   ) %>%
-  dplyr::mutate(Fecha = as.Date(Last_Update)) %>%
-  dplyr::rename(
+  mutate(Fecha = as.Date(Last_Update)) %>%
+  rename(
     Municipio = Admin2,
     Pais = Country_Region, 
     Estado = Province_State,
@@ -67,7 +67,7 @@ df_az <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %
     Activos = Active,
     Long = Long_
   ) %>%
-  dplyr::select(
+  select(
     -FIPS, -Combined_Key, -Last_Update
   )
 
@@ -77,19 +77,19 @@ df_az <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %
 dir_nac <- "https://raw.githubusercontent.com/carranco-sga/Mexico-COVID-19/master/Mexico_COVID19.csv"
 
 df_nac <- read.csv(dir_nac, stringsAsFactors = FALSE) %>% 
-  dplyr::rename_all(~sub('_D', '_Decesos', .x)) %>%
-  dplyr::rename_all(~sub('_I', '_Importados', .x)) %>%
-  dplyr::rename_all(~sub('_L', '_Locales', .x)) %>%
-  dplyr::rename_all(~sub('_R', '_Recuperados', .x)) %>%
-  dplyr::rename_all(~sub('_S', '_Sospechosos', .x)) %>%
-  dplyr::rename_at(
-    dplyr::vars(dplyr::matches("^[A-Z][A-Z][A-Z]$")),
-    dplyr::funs(paste(., "Confirmados", sep='_'))
+  rename_all(~sub('_D', '_Decesos', .x)) %>%
+  rename_all(~sub('_I', '_Importados', .x)) %>%
+  rename_all(~sub('_L', '_Locales', .x)) %>%
+  rename_all(~sub('_R', '_Recuperados', .x)) %>%
+  rename_all(~sub('_S', '_Sospechosos', .x)) %>%
+  rename_at(
+    vars(dplyr::matches("^[A-Z][A-Z][A-Z]$")),
+    funs(paste(., "Confirmados", sep='_'))
   ) %>%
-  dplyr::select(
+  select(
     -Pos_rep, -Susp_rep, -Neg_rep, -IRAG_Test, -Tested_tot
   ) %>%
-  dplyr::rename(
+  rename(
     Nacional_Confirmados = Pos_Confirmados,
     Nacional_Recuperados = Recovered,
     Nacional_Decesos = Deceased,
@@ -97,27 +97,27 @@ df_nac <- read.csv(dir_nac, stringsAsFactors = FALSE) %>%
     Nacional_Importados = Pos_Importados,
     Nacional_Locales = Pos_Locales
   ) %>%
-  tidyr::pivot_longer(
+  pivot_longer(
     cols = -Fecha,
     names_to = c("Estado", "Tipo"),
     names_pattern = "(.*)_(.*)",
     values_to = "Casos"
   ) %>%
-  dplyr::mutate(
+  mutate(
     Fecha = as.Date(Fecha),
   )
 
 df_estados <- df_nac  %>%
-  dplyr::filter(Fecha == max(Fecha)) %>%
-  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) %>% 
-  dplyr::select(
+  filter(Fecha == max(Fecha)) %>%
+  pivot_wider(names_from = Tipo, values_from = Casos) %>% 
+  select(
     -Fecha, -Locales, -Recuperados, -Sospechosos
   ) %>%
-  dplyr::arrange(-Confirmados) %>%
-  dplyr::mutate(
+  arrange(-Confirmados) %>%
+  mutate(
     T.Importados = Importados / Confirmados,
     T.Deceso = Decesos / Confirmados,
-    Estado = dplyr::recode( Estado,
+    Estado = recode( Estado,
       CMX = "Ciudad de México", MEX = "Estado de México", JAL = "Jalisco",
       PUE = "Puebla", NLE = "Nuevo León", YUC = "Yucatán", TAB = "Tabasco",
       ROO = "Quintana Roo", GUA = "Guanajuato", COA = "Coahuila", AGU = "Aguascalientes",
@@ -133,18 +133,20 @@ df_estados <- df_nac  %>%
 #--------------- Datos de Sonora y sus Municipios -------------
 
 df_sss <- readxl::read_excel("data/COVID-19.xlsx", skip = 4, sheet = 1) %>%
-  dplyr::select(EDAD, SEXO, `MUNICIPIO DE RESIDENCIA`, `SERVICIO MÉDICO`, 
-                `CONTACTO CON SOSPECHOSOS`, "ANTECEDENTE DE VIAJE A REGION DE RIESGO",
-                `TIPO DE ATENCIÓN`, `CLASIFICACIÓN FINAL`, `FECHA DE CLASIFICACIÓN FINAL`, 
-                `FECHA DE CONFIRMACIÓN`, `RESULTADO`) %>%
-  dplyr::rename(
+  select(
+    EDAD, SEXO, `MUNICIPIO DE RESIDENCIA`, `SERVICIO MÉDICO`, 
+    `CONTACTO CON SOSPECHOSOS`, "ANTECEDENTE DE VIAJE A REGION DE RIESGO",
+    `TIPO DE ATENCIÓN`, `CLASIFICACIÓN FINAL`, `FECHA DE CLASIFICACIÓN FINAL`, 
+    `FECHA DE CONFIRMACIÓN`, `RESULTADO`
+  ) %>%
+  rename(
     Edad = EDAD, Sexo = SEXO, Municipio = `MUNICIPIO DE RESIDENCIA`, 
     Servicio.Medico = `SERVICIO MÉDICO`, Contacto =  `CONTACTO CON SOSPECHOSOS`, 
     Viaje = "ANTECEDENTE DE VIAJE A REGION DE RIESGO", Tipo.Atencion = `TIPO DE ATENCIÓN`, 
     Final = `CLASIFICACIÓN FINAL`, Fecha.Final = `FECHA DE CLASIFICACIÓN FINAL`, 
     Fecha = `FECHA DE CONFIRMACIÓN`, Resultado = `RESULTADO`
   ) %>%
-  dplyr::mutate(
+  mutate(
     Tipo.Atencion = dplyr::recode(Tipo.Atencion, `1` = "Ambulatorio", `2` = "Hospitalizado"),
     Sexo = dplyr::recode(Sexo, `1` = "Masculino", `2` = "Femenino"),
     Contacto = dplyr::recode(Contacto, `1` = TRUE, `2` = FALSE, `3` = NA),
@@ -165,23 +167,24 @@ df_municipios <- df_sss %>%
 
 #----------------Concentrado general ---------------------
 df_az_c <- df_az %>% 
-  dplyr::group_by(Estado) %>%     
-  dplyr::summarise(
+  group_by(Estado) %>%     
+  summarise(
     Confirmados = sum(Confirmados),
     Recuperados = sum(Recuperados),
     Decesos = sum(Decesos)
   ) %>%
-  dplyr::arrange(- Confirmados)
+  arrange(- Confirmados)
 
 df_nac_c <- df_nac  %>%
-  dplyr::filter(Estado %in% c('CHH', 'SIN', 'BCN', 'SON', 'Nacional')) %>%
-  dplyr::filter(Fecha == max(Fecha)) %>%
-  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) %>%
-  dplyr::select(
+  filter(Estado %in% c('CHH', 'SIN', 'BCN', 'SON', 'Nacional')) %>%
+  filter(Fecha == max(Fecha)) %>%
+  pivot_wider(names_from = Tipo, values_from = Casos) %>%
+  select(
     -Fecha, -Sospechosos, -Locales, -Importados
   ) %>%
-  dplyr::mutate(
-    Estado = dplyr::recode(Estado,
+  mutate(
+    Estado = recode(
+      Estado,
       'CHH' = 'Chihuahua',
       'SIN' = 'Sinaloa',
       'BCN' = 'Baja California',
@@ -191,19 +194,24 @@ df_nac_c <- df_nac  %>%
     )
   )
 
-df_sssc <- df_sss %>% dplyr::filter(str_detect(Resultado, "SARS-CoV-2"))
+df_sssc <- df_sss %>% filter(str_detect(Resultado, "SARS-CoV-2"))
 df_son_c <- data.frame(
   Estado = "Sonora",
   Confirmados = nrow(df_sssc),
   Recuperados = sum(as.numeric(df_sssc$Final=="RECUPERADO"), na.rm = TRUE),
-  Decesos = sum(as.numeric(df_sssc$Final=="DECESOS"), na.rm = TRUE)
+  Decesos = sum(as.numeric(df_sssc$Final=="DEFUNCION"), na.rm = TRUE)
 )
 
 df_c <- df_az_c %>%
   dplyr::full_join(df_nac_c) 
 df_c$Recuperados[df_c$Estado == "Sonora"] = df_son_c$Recuperados
 df_c$Confirmados[df_c$Estado == "Sonora"] = df_son_c$Confirmados
+df_c$Decesos[df_c$Estado == "Sonora"] = df_son_c$Decesos
 
+
+
+
+#-------------------Variaciones en los estados------------------
 df_edos_t <- df_nac %>%
   dplyr::mutate(
     Estado = dplyr::recode( Estado,
@@ -226,12 +234,24 @@ df_edos_t <- df_nac %>%
   dplyr::filter(Fecha == max(Fecha)) %>%
   dplyr::arrange(-Confirmados)
 
+
 #----------------Series de tiempo ----------------------
 
+df.son <- df_sss %>%
+  group_by(Fecha) %>%
+  summarise(
+    T = n(),
+    C = sum(as.numeric(str_detect(Resultado, "SARS-CoV-2")), na.rm = TRUE)
+  ) %>%
+  mutate(
+    C.acc = cumsum(C)
+  )
+
 df_son_s <- df_nac  %>%
-  dplyr::filter(Estado == "SON") %>%
-  dplyr::filter(Fecha >= "2020-3-15") %>%
-  tidyr::pivot_wider(names_from = Tipo, values_from = Casos) 
+  filter(Estado == "SON") %>%
+  filter(Fecha >= "2020-3-15") %>%
+  pivot_wider(names_from = Tipo, values_from = Casos) 
+
 
 df_mex_s <- df_nac %>%
   dplyr::filter(Estado %in% c("SON", "Nacional", "SIN", "CHH", "BCN")) %>%
@@ -281,7 +301,7 @@ Row
 ```{r}
 valueBox(
   value = paste(format(df_c$Confirmados[df_c$Estado=="Sonora"], big.mark = ","), "", sep = " "), 
-  caption = "Casos Confirmados en Sonora", 
+  caption = "Confirmados", 
   icon = "fas fa-thermometer-full", 
   color = confirmados_color
 )
@@ -299,7 +319,7 @@ valueBox(
     ), 
     "", sep = " "
   ), 
-  caption = "Casos Activos en Sonora", 
+  caption = "Activos", 
   icon = "fas fa-medkit", 
   color = activos_color)
 ```
@@ -309,7 +329,7 @@ valueBox(
 ```{r}
 valueBox(
   value = paste(format(df_son_c$Recuperados, big.mark = ","), "", sep = ""), 
-  caption = "Recuperados en Sonora", 
+  caption = "Recuperados", 
   icon = "fas fa-thumbs-up", 
   color = recuperados_color
 )
@@ -321,7 +341,7 @@ valueBox(
 
 valueBox(
   value = paste(format(df_c$Decesos[df_c$Estado=="Sonora"], big.mark = ","), "", sep = " "),
-  caption = "Decesos en Sonora", 
+  caption = "Decesos", 
   icon = "fas fa-plus-square", 
   color = decesos_color
 )
@@ -358,16 +378,32 @@ plotly::plot_ly(data = df_pp,
                     name = "Decesos",
                     marker = list(color = decesos_color)) %>%
   plotly::layout(barmode = 'stack',
-                 yaxis = list(title = "Casos"), 
-                 xaxis = list(title = ""),
+                 yaxis = list(title = "Casos", fixedrange = TRUE), 
+                 xaxis = list(title = "", fixedrange = TRUE),
                  hovermode = "compare",
-                  margin =  list(
+                 margin =  list(
                    # l = 60,
                    # r = 40,
                    b = 10,
                    t = 10,
                    pad = 2
-                 ))
+                 )) %>%
+  plotly::config(displaylogo = FALSE,
+                 modeBarButtonsToRemove = list(
+                   'sendDataToCloud',
+                   'zoom2d',
+                   'pan2d',
+                   'select2d',
+                   'lasso2d',
+                   'zoomIn2d', 
+                   'zoomOut2d',
+                   #'toImage',
+                   'autoScale2d',
+                   'resetScale2d',
+                   'hoverClosestCartesian',
+                   'hoverCompareCartesian',
+                   'toggleSpikelines'
+                ))
 
 ```
 
@@ -397,10 +433,26 @@ plotly::plot_ly(data = df_s) %>%
                     line = list(color = activos_color),
                     marker = list(color = activos_color)) %>%   
   plotly::layout(title = "",
-                 yaxis = list(title = "Casos"),
-                 xaxis = list(title = ""),
+                 yaxis = list(title = "Casos", fixedrange = TRUE),
+                 xaxis = list(title = "", fixedrange = TRUE),
                  legend = list(x = 0.1, y = 0.9),
-                 hovermode = "compare")
+                 hovermode = "compare") %>%
+  plotly::config(displaylogo = FALSE,
+                 modeBarButtonsToRemove = list(
+                   'sendDataToCloud',
+                   'zoom2d',
+                   'pan2d',
+                   'select2d',
+                   'lasso2d',
+                   'zoomIn2d', 
+                   'zoomOut2d',
+                   #'toImage',
+                   #'autoScale2d',
+                   'resetScale2d',
+                   'hoverClosestCartesian',
+                   'hoverCompareCartesian',
+                   'toggleSpikelines'
+                ))
 
 ```
 
@@ -439,9 +491,26 @@ df_c %>% dplyr::left_join(df_poblacion) %>%
                                 "</br> Densidad de pob (Hab/m2): ", Densidad
                                 )
                  ) %>%
-  plotly::layout(yaxis = list(title = "Casos por 100k hab"),
-                xaxis = list(title = "Densidad de Población"),
-                hovermode = "compare")
+    plotly::layout(yaxis = list(title = "Casos por 100 mil hab", fixedrange = TRUE),
+                xaxis = list(title = "Densidad de Población (hab/m2)", fixedrange = TRUE),
+                hovermode = "closest") %>%
+    plotly::config(displaylogo = FALSE,
+                 modeBarButtonsToRemove = list(
+                   'sendDataToCloud',
+                   'zoom2d',
+                   'pan2d',
+                   'select2d',
+                   'lasso2d',
+                   'zoomIn2d', 
+                   'zoomOut2d',
+                   #'toImage',
+                   'autoScale2d',
+                   'resetScale2d',
+                   'hoverClosestCartesian',
+                   'hoverCompareCartesian',
+                   'toggleSpikelines'
+                ))
+
   
 ```   
 
@@ -476,16 +545,35 @@ df_s2 %>%
                   marker = list(color = confirmados_color),
                   orientation = 'h') %>%
   plotly::layout(yaxis = list(title = "", zeroline = FALSE, showline = FALSE, 
-                              showticklabels = TRUE, showgrid = FALSE),
+                              showticklabels = TRUE, showgrid = FALSE,
+                              fixedrange = TRUE),
                  xaxis = list(title = "", zeroline = FALSE, showline = FALSE, 
-                              showticklabels = FALSE, showgrid = FALSE),
+                              showticklabels = FALSE, showgrid = FALSE,
+                              fixedrange = TRUE),
                  margin =  list(
                    l = 10,
                    r = 10,
                    b = 10,
                    t = 10,
                    pad = 2
-                 ))
+                 )) %>%
+    plotly::config(displaylogo = FALSE,
+                 modeBarButtonsToRemove = list(
+                   'sendDataToCloud',
+                   'zoom2d',
+                   'pan2d',
+                   'select2d',
+                   'lasso2d',
+                   'zoomIn2d', 
+                   'zoomOut2d',
+                   #'toImage',
+                   'autoScale2d',
+                   'resetScale2d',
+                   'hoverClosestCartesian',
+                   'hoverCompareCartesian',
+                   'toggleSpikelines'
+                ))
+
 
 ```
 
@@ -596,7 +684,7 @@ Row
 -----------------------------------------------------------------------
 
 
-### Años de Mediana de Edad 
+### Mediana de Edad en Años
 
 ```{r}
 ed.med <- median(df_sssc$Edad, na.rm = TRUE)
@@ -679,10 +767,27 @@ plotly::plot_ly(data = df_son_s) %>%
                     line = list(color = decesos_color),
                     marker = list(color = decesos_color)) %>%
   plotly::layout(title = "",
-                 yaxis = list(title = "Casos"),
-                 xaxis = list(title = ""),
+                 yaxis = list(title = "Casos", fixedrange = TRUE),
+                 xaxis = list(title = "", fixedrange = TRUE),
                  legend = list(x = 0.1, y = 0.9),
-                 hovermode = "compare")
+                 hovermode = "compare") %>%
+  plotly::config(displaylogo = FALSE,
+                 modeBarButtonsToRemove = list(
+                   'sendDataToCloud',
+                   'zoom2d',
+                   'pan2d',
+                   'select2d',
+                   'lasso2d',
+                   'zoomIn2d', 
+                   'zoomOut2d',
+                   #'toImage',
+                   'autoScale2d',
+                   'resetScale2d',
+                   'hoverClosestCartesian',
+                   'hoverCompareCartesian',
+                   'toggleSpikelines'
+                ))
+
   
 
 ```
@@ -729,12 +834,31 @@ df_sssc %>%
     marker = list(colors = pie.colores)
   ) %>%
   plotly::layout(title = ' ',
-         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
-         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, 
+                      showticklabels = FALSE, fixedrange = TRUE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, 
+                      showticklabels = FALSE, fixedrange = TRUE)
+  )%>%
+  plotly::config(displaylogo = FALSE,
+                 modeBarButtonsToRemove = list(
+                   'sendDataToCloud',
+                   'zoom2d',
+                   'pan2d',
+                   'select2d',
+                   'lasso2d',
+                   'zoomIn2d', 
+                   'zoomOut2d',
+                   #'toImage',
+                   'autoScale2d',
+                   'resetScale2d',
+                   'hoverClosestCartesian',
+                   'hoverCompareCartesian',
+                   'toggleSpikelines'
+                ))
+
 
 ```
     
-
 
 
 ### **Hospitalizados respecto a Casos Confirmados**
@@ -750,10 +874,11 @@ plotly::plot_ly(
     mode = "gauge+number",
     gauge = list(
       axis = list(range = list(NULL, nrow(df_sssc))),
-      bar = list(color = confirmados_color)
+      bar = list(color = "red")
     ) 
-  )%>%
-  plotly::layout(margin = list(l=20,r=30))
+  ) %>%
+  plotly::layout(margin = list(l=20,r=30)) %>%
+  plotly::config(displaylogo = FALSE)
 
 
 ```
@@ -770,6 +895,29 @@ Este tablero es un recurso elaborado por un grupo de profesores del [Departament
 Los datos sobre el proceso del COVID-19 en el Estado de Sonora se reciben diariamente de la [Secretaría de Salud del Estado de Sonora](https://www.sonora.gob.mx/temas-de-interes/salud.html), gracias a la colaboración entre la Universidad de Sonora y el Gobierno del Estado durante este periodo excepcional.
 Los datos sobre el proceso del COVID-19 de los estados de México se tomaron del [repositorio de datos mantenido por Gabriel Alfonso Carranco-Sapiéns](https://github.com/carranco-sga/Mexico-COVID-19). Esta base se actualiza cada día a partir de la información de la [SSA](https://www.gob.mx/salud). Los datos sobre la población de México se tomaron de [INEGI](https://www.inegi.org.mx/app/tabulados/interactivos/?px=Poblacion_07&bd=Poblacion).
 Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del [Centro de recursos sobre Coronavirus](https://coronavirus.jhu.edu) de la Universidad Johns Hopkins University & Medicine. Esta base de datos se actualizan cada día a media noche y se pueden obtener [aquí](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data). 
+
+**Indicadores Sonora**
+
+Confirmados: cantidad de pruebas que dieron positivo en SARS-CoV2 
+
+Activos: Confirmados - Recuperados - Decesos
+
+Recuperados: cantidad de pacientes confirmados dados de alta 
+
+Decesos: cantidad de pacientes fallecidos en casos confirmados
+
+Mediana de edad: mediana del rango de edades de casos confirmados
+
+Pruebas realizadas: cantidad pruebas realizadas en total
+
+Pruebas negativas: cantidad pruebas que dieron negativo en SARS-CoV2
+
+Sospechosos: Pruebas realizadas - Confirmados - Pruebas negativas
+
+---------
+
+Las cantidades corresponden a las mediciones hechas a partir del día 2 de marzo de 2020 al último día indicado en la curva de evolución de casos confirmados de Sonora. Los datos de las curvas de progresión se tomaron de los datos del Gobierno Federal para fines comparativos, pueden variar los números un poco respecto a los datos de la SSA por la diferencia en la hora de corte.
+
 
 **Paquetes utilizados y documentación**
 
