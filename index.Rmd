@@ -933,6 +933,6 @@ Las cantidades corresponden a las mediciones hechas a partir del día 2 de marzo
 El tablero se genera diariamente como una página web estática. Es posible realizar un *fork* al [proyecto en Github](https://github.com/mcd-unison/coronavirus_dashboard), descargarlo, modificarlo y publicar un tablero similar en las páginas web que desees.
 
 **Contacto**
-[O. Gutú](mailto:olivia.gutu@unison.mx) | [C. Minjárez](mailto:carlos.minjarez@unison.mx) |[J. P.  Soto](mailto:juanpablo.soto@unison.mx) | [J. Waissman](mailto:julio.waissman@unison.mx)
+[O. Gutú](mailto:olivia.gutu@unison.mx) | [J. P.  Soto](mailto:juanpablo.soto@unison.mx) | [J. Waissman](mailto:julio.waissman@unison.mx)
 
 
