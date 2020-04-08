@@ -34,7 +34,7 @@ decesos_color <- "darkgrey"
 #--------------- Datos Arizona------------------
 
 direccion <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
-archivo <- format(Sys.Date(), "%m-%d-%Y.csv")
+archivo <- format(Sys.Date()-1, "%m-%d-%Y.csv")
 fecha_actual <- Sys.Date()
 
 df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
@@ -202,6 +202,15 @@ df_son_c <- data.frame(
   Recuperados = sum(as.numeric(df_sssc$Final=="RECUPERADO"), na.rm = TRUE),
   Decesos = sum(as.numeric(df_sssc$Final=="DEFUNCION"), na.rm = TRUE)
 )
+
+###########################################################################3
+df_mio <- read.csv("../data/acumulado.csv", stringsAsFactors = FALSE)
+df_son_c <- df_mio %>% filter(Municipio == "Estado") %>% 
+  mutate(Estado = "Sonora") %>%
+  select(Estado, Confirmados, Recuperados, Decesos)
+df_municipios <- df_mio %>% filter(Municipio != "Estado") %>% 
+  select(Municipio, Confirmados, Decesos, Recuperados)
+############################################################################
 
 df_c <- df_az_c %>%
   dplyr::full_join(df_nac_c) 
@@ -666,7 +675,7 @@ mun_map <- df_municipios %>% dplyr::left_join(
 
 map_object <<- map_object %>%
   circulitos(mun_map, pal, "Sonora", 0.99, 
-             c("Municipio","Confirmados", "Importados", "Recuperados", "Decesos"))
+             c("Municipio","Confirmados", "Recuperados", "Decesos"))
 
 map_object
   
@@ -715,6 +724,8 @@ valueBox(
 ### Pruebas Realizadas 
 
 ```{r}
+realizadas <- nrow(df_sss)
+realizados <- last(df_mio$Estudiados)
 valueBox(nrow(df_sss), icon = "fa-heartbeat", color = activos_color)
 ```
 
@@ -722,6 +733,7 @@ valueBox(nrow(df_sss), icon = "fa-heartbeat", color = activos_color)
 
 ```{r}
 negativos <- sum(as.numeric(!is.na(df_sss$Resultado)), na.rm = TRUE) - nrow(df_sssc)
+negativos <- last(df_mio$Negativos)
 valueBox(negativos, icon = "fa-check-square", color = recuperados_color)
 ```
 
@@ -867,6 +879,7 @@ df_sssc %>%
 
 ```{r}
 hosp <- sum(as.numeric(df_sssc$Tipo.Atencion == "Hospitalizado"), na.rm = TRUE)
+hosp <- last(df_mio$Hospitalizados)
 
 plotly::plot_ly(
     domain = list(x = c(0, 1), y = c(0, 1)),
