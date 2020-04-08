@@ -34,7 +34,7 @@ decesos_color <- "darkgrey"
 #--------------- Datos Arizona------------------
 
 direccion <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
-archivo <- format(Sys.Date()-1, "%m-%d-%Y.csv")
+archivo <- format(Sys.Date(), "%m-%d-%Y.csv")
 fecha_actual <- Sys.Date()
 
 df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
@@ -651,6 +651,7 @@ edos_map <-df_estados %>% dplyr::left_join(
   by = "Estado"
 ) %>%
   dplyr::filter(Estado != "Nacional") %>%
+  dplyr::filter(Estado != "Sonora") %>%
   dplyr::mutate(Municipio = Estado)
 
 map_object <<- map_object %>%
