@@ -303,6 +303,7 @@ df_s <- df_mex_s %>% dplyr::left_join(df_az_s, by = "Fecha") %>%
 
 Resumen
 =======================================================================
+
 Row
 -----------------------------------------------------------------------
 
@@ -591,8 +592,8 @@ df_s2 %>%
 
 Row {data-height=80}
 -----------------------------------------------------------------------
-
 <img align="right" height=50 src="letragrama-unison.jpg" />
+
 
 Mapa
 =======================================================================
@@ -825,14 +826,15 @@ plotly::plot_ly(data = df_son_s) %>%
 ### **Casos Confirmados por Municipio**
 
 ```{r}
-df_municipios %>%
-  dplyr::arrange(-Confirmados) %>%
-  dplyr::select(Municipio, Confirmados, Recuperados, Decesos) %>%
+df_mio %>%
+  dplyr::filter(Municipio != "Estado") %>%
+  dplyr::select(Municipio, Confirmados, Incidencia, Decesos) %>%
+  dplyr::arrange(-`Confirmados`) %>%
   knitr::kable()
 
     # DT::datatable(rownames = FALSE,
     #         colnames = c("Municipio", "Confirmados",
-    #                      "Recuperados", "Decesos"),
+    #                      "Incidencia", "Decesos"),
     #         options = list(pageLength = nrow(df_estados), dom = 'tip')) 
 
 ```
