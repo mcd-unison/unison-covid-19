@@ -592,12 +592,15 @@ df_s2 %>%
 Row {data-height=80}
 -----------------------------------------------------------------------
 
-<img align="right" src="letragrama-unison.jpg" />
+<img align="right" height=50 src="letragrama-unison.jpg" />
 
 Mapa
 =======================================================================
 
-**Mapa con casos por Estados y Municipios en la Megaregión Sonora-Arizona**
+Row {data-height=920}
+-----------------------------------------------------------------------
+
+### **Mapa con casos por Estados y Municipios en la Megaregión Sonora-Arizona**
 
 ```{r}
 #-----------------Inicializa mapa----------------------
@@ -679,7 +682,7 @@ mun_map <- df_municipios %>% dplyr::left_join(
 
 map_object <<- map_object %>%
   circulitos(mun_map, pal, "Sonora", 0.99, 
-             c("Municipio","Confirmados", "Recuperados", "Decesos"))
+             c("Municipio","Confirmados", "Decesos"))
 
 map_object
   
@@ -692,6 +695,12 @@ map_object
 #)
 ```
 
+Row {data-height=80}
+-----------------------------------------------------------------------
+
+<img align="right" height=50 src="letragrama-unison.jpg" />
+
+
 Estado
 =======================================================================
 
@@ -699,23 +708,15 @@ Row
 -----------------------------------------------------------------------
 
 
-### Mediana de Edad en Años
-
-```{r}
-ed.med <- median(df_sssc$Edad, na.rm = TRUE)
-valueBox(ed.med, icon = "fa-user", color = confirmados_color)
-
-```
-
 
 ### Genero (% Mujeres) 
 
 ```{r}
 
-gen.per <- round(
-  100 * sum(as.numeric(df_sssc$Sexo == "Femenino"), na.rm = TRUE) / nrow(df_sssc)
-)
-
+#gen.per <- round(
+#  100 * sum(as.numeric(df_sssc$Sexo == "Femenino"), na.rm = TRUE) / nrow(df_sssc)
+#)
+gen.per <- round( 100 * last(df_mio$Mujeres) / last(df_mio$Confirmados))
 valueBox(
   value = gen.per, 
   caption = "% de Casos Confirmados son Mujeres", 
@@ -728,18 +729,29 @@ valueBox(
 ### Pruebas Realizadas 
 
 ```{r}
-realizadas <- nrow(df_sss)
+#realizadas <- nrow(df_sss)
 realizados <- last(df_mio$Estudiados)
-valueBox(nrow(df_sss), icon = "fa-heartbeat", color = activos_color)
+valueBox(realizados, icon = "fa-heartbeat", color = activos_color)
 ```
 
 ### Pruebas Negativas 
 
 ```{r}
-negativos <- sum(as.numeric(!is.na(df_sss$Resultado)), na.rm = TRUE) - nrow(df_sssc)
+#negativos <- sum(as.numeric(!is.na(df_sss$Resultado)), na.rm = TRUE) - nrow(df_sssc)
 negativos <- last(df_mio$Negativos)
 valueBox(negativos, icon = "fa-check-square", color = recuperados_color)
 ```
+
+
+### Tasa de Letalidad (%)
+
+```{r}
+
+letalidad <- round(100 * last(df_mio$Decesos) / last(df_mio$Confirmados))
+valueBox(letalidad, icon = "fa-user", color = confirmados_color)
+
+```
+
 
 <!-- ###  -->
 <!-- ```{r out.width="10%"} -->
@@ -838,10 +850,12 @@ Row
 pie.colores <- c(activos_color, decesos_color, recuperados_color, confirmados_color,
                  'light-blue', 'pale-yellow', 'teal', 'pink', 'indigo', 'orange', 'cyan')
 
-df_sssc %>%
-  dplyr::group_by(Servicio.Medico) %>%
-  dplyr::summarise(Casos = n()) %>%
-  plotly::plot_ly(
+#df_sssc %>% 
+#  dplyr::group_by(Servicio.Medico) %>%
+#  dplyr::summarise(Casos = n()) %>%
+
+read.csv("../data/servicio_medico.csv", stringsAsFactors = FALSE) %>%
+    plotly::plot_ly(
     labels = ~Servicio.Medico,
     values = ~Casos,
     type = "pie",
@@ -901,6 +915,13 @@ plotly::plot_ly(
 
 
 ```
+
+Row {data-height=80}
+-----------------------------------------------------------------------
+
+<img align="right" height=50 src="letragrama-unison.jpg" />
+
+
 
 Acerca de
 =======================================================================
