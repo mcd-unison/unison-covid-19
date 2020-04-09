@@ -6,7 +6,7 @@ output:
     social: [ "menu"]
     orientation: rows
     vertical_layout: fill
-    logo: logo-mcd-circ-60.png
+    #logo: logito.png
     favicon: favicon-mcd.png
 
 ---
@@ -433,6 +433,7 @@ plotly::plot_ly(data = df_s) %>%
                     type = "scatter",
                     mode = "lines+markers",
                     name = "Nacional",
+                    visible = "legendonly",
                     line = list(color = recuperados_color),
                     marker = list(color = recuperados_color)) %>%
   plotly::add_trace(x = ~ Fecha,
@@ -440,6 +441,7 @@ plotly::plot_ly(data = df_s) %>%
                     type = "scatter",
                     mode = 'lines+markers',
                     name = "Arizona",
+                    visible = "legendonly",
                     line = list(color = activos_color),
                     marker = list(color = activos_color)) %>%   
   plotly::layout(title = "",
@@ -587,8 +589,10 @@ df_s2 %>%
 
 ```
 
+Row {data-height=80}
+-----------------------------------------------------------------------
 
-
+<img align="right" src="letragrama-unison.jpg" />
 
 Mapa
 =======================================================================
@@ -909,7 +913,7 @@ Este tablero es un recurso elaborado por un grupo de profesores del [Departament
 
 Los datos sobre el proceso del COVID-19 en el Estado de Sonora se reciben diariamente de la [Secretaría de Salud del Estado de Sonora](https://www.sonora.gob.mx/temas-de-interes/salud.html), gracias a la colaboración entre la Universidad de Sonora y el Gobierno del Estado durante este periodo excepcional.
 Los datos sobre el proceso del COVID-19 de los estados de México se tomaron del [repositorio de datos mantenido por Gabriel Alfonso Carranco-Sapiéns](https://github.com/carranco-sga/Mexico-COVID-19). Esta base se actualiza cada día a partir de la información de la [SSA](https://www.gob.mx/salud). Los datos sobre la población de México se tomaron de [INEGI](https://www.inegi.org.mx/app/tabulados/interactivos/?px=Poblacion_07&bd=Poblacion).
-Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del [Centro de recursos sobre Coronavirus](https://coronavirus.jhu.edu) de la Universidad Johns Hopkins University & Medicine. Esta base de datos se actualizan cada día a media noche y se pueden obtener [aquí](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data). 
+Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del [Centro de recursos sobre Coronavirus](https://coronavirus.jhu.edu) de la Universidad Johns Hopkins University & Medicine. Esta base de datos se actualiza cada día a media noche y se puede obtener [aquí](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data). 
 
 **Indicadores Sonora**
 
@@ -944,9 +948,18 @@ Las cantidades corresponden a las mediciones hechas a partir del día 2 de marzo
 
 **Reproducibilidad**
 
-El tablero se genera diariamente como una página web estática. Es posible realizar un *fork* al [proyecto en Github](https://github.com/mcd-unison/coronavirus_dashboard), descargarlo, modificarlo y publicar un tablero similar en las páginas web que desees.
+El tablero se genera diariamente como una página web estática. Es posible realizar un *fork* al [proyecto en Github](https://github.com/mcd-unison/unison-covid-19), descargarlo, modificarlo y publicar un tablero similar en las páginas web que desees.
 
 **Contacto**
 [O. Gutú](mailto:olivia.gutu@unison.mx) | [J. P.  Soto](mailto:juanpablo.soto@unison.mx) | [J. Waissman](mailto:julio.waissman@unison.mx)
+
+**Licencia MIT**
+
+Copyright (c) 2020 Universidad de Sonora
+
+Por la presente se concede permiso, libre de cargos, a cualquier persona que obtenga una copia de este software y de los archivos de documentación asociados (el "Software"), a utilizar el Software sin restricción, incluyendo sin limitación los derechos a usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar, y/o vender copias del Software, y a permitir a las personas a las que se les proporcione el Software a hacer lo mismo, sujeto a las siguientes condiciones:
+El aviso de copyright anterior y este aviso de permiso se incluirán en todas las copias o partes sustanciales del Software.
+
+EL SOFTWARE SE PROPORCIONA "COMO ESTÁ", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O IMPLÍCITA, INCLUYENDO PERO NO LIMITADO A GARANTÍAS DE COMERCIALIZACIÓN, IDONEIDAD PARA UN PROPÓSITO PARTICULAR E INCUMPLIMIENTO. EN NINGÚN CASO LOS AUTORES O PROPIETARIOS DE LOS DERECHOS DE AUTOR SERÁN RESPONSABLES DE NINGUNA RECLAMACIÓN, DAÑOS U OTRAS RESPONSABILIDADES, YA SEA EN UNA ACCIÓN DE CONTRATO, AGRAVIO O CUALQUIER OTRO MOTIVO, DERIVADAS DE, FUERA DE O EN CONEXIÓN CON EL SOFTWARE O SU USO U OTRO TIPO DE ACCIONES EN EL SOFTWARE.
 
 
