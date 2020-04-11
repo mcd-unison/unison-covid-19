@@ -17,10 +17,10 @@ library(flexdashboard)
 library(tidyverse)
 library(magrittr)
 
-# Aqui cargamos los datos de coronavirus de JHU
+# El dia de hoy (para los archivos)
+hoy.jh <- format(Sys.Date(), "%m-%d-%Y")
+hoy.ss <- format(Sys.Date() - 1, "%d.%m.%y")
 
-
-#`%>%` <- magrittr::`%>%`  
 
 #------------------ Colores ------------------
 # Set colors
@@ -29,15 +29,13 @@ confirmados_color <- "purple"
 activos_color <- "#0000CD"
 recuperados_color <- "#46B861"
 decesos_color <- "darkgrey"
-#decesos_color <- "#FF1493"
+rosa_color <- "#FF1493"
 
 #--------------- Datos Arizona------------------
 
 direccion <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
-archivo <- format(Sys.Date()-1, "%m-%d-%Y.csv")
-fecha_actual <- Sys.Date()
 
-df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
+df <- read.csv(paste(direccion, hoy.jh, ".csv", sep=''), stringsAsFactors = FALSE) %>%
   mutate(Fecha = as.Date(Last_Update)) %>%
   rename(
     Municipio = Admin2,
@@ -53,7 +51,7 @@ df <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
     -FIPS, -Combined_Key, -Last_Update
   )
 
-df_az <- read.csv(paste(direccion, archivo, sep=''), stringsAsFactors = FALSE) %>%
+df_az <- read.csv(paste(direccion, hoy.jh, '.csv', sep=''), stringsAsFactors = FALSE) %>%
   filter( 
     Province_State %in% c('Arizona', 'Nacional')
   ) %>%
@@ -133,27 +131,26 @@ df_estados <- df_nac  %>%
 
 #--------------- Datos de Sonora y sus Municipios -------------
 
-df_sss <- readxl::read_excel("../data/COVID-19.xlsx", skip = 4, sheet = 1) %>%
+
+df_sss <- readxl::read_excel(
+  paste("../data/BASE COVID-19-", hoy.ss, "-IDCL-BM.xlsx", sep='')
+) %>%
   select(
-    EDAD, SEXO, `MUNICIPIO DE RESIDENCIA`, `SERVICIO MÉDICO`, 
-    `CONTACTO CON SOSPECHOSOS`, "ANTECEDENTE DE VIAJE A REGION DE RIESGO",
-    `TIPO DE ATENCIÓN`, `CLASIFICACIÓN FINAL`, `FECHA DE CLASIFICACIÓN FINAL`, 
-    `FECHA DE CONFIRMACIÓN`, `RESULTADO`
+    EDAD, SEXO, `MUN RES`, `SER MED`, CONTACTO, VIAJE,
+    `TIPO ATN`, `CLASIFICACIÓN`, `FECHA DE CLAS`, 
+    `FECHA DE CONF`, `RESULTADO`, `INI SINT`
   ) %>%
   rename(
-    Edad = EDAD, Sexo = SEXO, Municipio = `MUNICIPIO DE RESIDENCIA`, 
-    Servicio.Medico = `SERVICIO MÉDICO`, Contacto =  `CONTACTO CON SOSPECHOSOS`, 
-    Viaje = "ANTECEDENTE DE VIAJE A REGION DE RIESGO", Tipo.Atencion = `TIPO DE ATENCIÓN`, 
-    Final = `CLASIFICACIÓN FINAL`, Fecha.Final = `FECHA DE CLASIFICACIÓN FINAL`, 
-    Fecha = `FECHA DE CONFIRMACIÓN`, Resultado = `RESULTADO`
+    Edad = EDAD, Sexo = SEXO, Municipio = `MUN RES`, 
+    Servicio.Medico = `SER MED`, Contacto =  CONTACTO, 
+    Viaje = VIAJE, Tipo.Atencion = `TIPO ATN`, 
+    Final = `CLASIFICACIÓN`, Fecha.Final = `FECHA DE CLAS`, 
+    Fecha = `FECHA DE CONF`, Resultado = `RESULTADO`, Fecha.Inicial = `INI SINT`
   ) %>%
   mutate(
-    Tipo.Atencion = dplyr::recode(Tipo.Atencion, `1` = "Ambulatorio", `2` = "Hospitalizado"),
-    Sexo = dplyr::recode(Sexo, `1` = "Masculino", `2` = "Femenino"),
-    Contacto = dplyr::recode(Contacto, `1` = TRUE, `2` = FALSE, `3` = NA),
-    Viaje = dplyr::recode(Viaje, `0` = FALSE, `1` = TRUE),
     Fecha = as.Date(Fecha),
-    Fecha.Final = as.Date(Fecha.Final)
+    Fecha.Final = as.Date(Fecha.Final),
+    Fecha.Inicial = as.Date(Fecha.Inicial)
   )
 
 df_municipios <- df_sss %>%
@@ -161,7 +158,7 @@ df_municipios <- df_sss %>%
   dplyr::group_by(Municipio) %>%
   dplyr::summarise(
     Confirmados = n(),
-    Importados = sum(as.numeric(Viaje), na.rm = TRUE),
+    Importados = sum(as.numeric(Viaje == "SI"), na.rm = TRUE),
     Decesos = sum(as.numeric(Final == "DEFUNCION"), na.rm = TRUE),
     Recuperados = sum(as.numeric(Final == "RECUPERADO"), na.rm=TRUE)
   )
@@ -198,18 +195,18 @@ df_nac_c <- df_nac  %>%
 df_sssc <- df_sss %>% filter(str_detect(Resultado, "SARS-CoV-2"))
 df_son_c <- data.frame(
   Estado = "Sonora",
-  Confirmados = nrow(df_sssc),
-  Recuperados = sum(as.numeric(df_sssc$Final=="RECUPERADO"), na.rm = TRUE),
-  Decesos = sum(as.numeric(df_sssc$Final=="DEFUNCION"), na.rm = TRUE)
+  Confirmados = sum(df_municipios$Confirmados),
+  Recuperados = sum(df_municipios$Recuperados),
+  Decesos = sum(df_municipios$Decesos)
 )
 
 ###########################################################################3
 df_mio <- read.csv("../data/acumulado.csv", stringsAsFactors = FALSE)
 df_son_c <- df_mio %>% filter(Municipio == "Estado") %>% 
   mutate(Estado = "Sonora") %>%
-  select(Estado, Confirmados, Recuperados, Decesos)
+    select(Estado, Confirmados, Recuperados, Decesos)
 df_municipios <- df_mio %>% filter(Municipio != "Estado") %>% 
-  select(Municipio, Confirmados, Decesos, Recuperados)
+    select(Municipio, Confirmados, Decesos, Recuperados)
 ############################################################################
 
 df_c <- df_az_c %>%
@@ -261,7 +258,6 @@ df_son_s <- df_nac  %>%
   filter(Estado == "SON") %>%
   filter(Fecha >= "2020-3-15") %>%
   pivot_wider(names_from = Tipo, values_from = Casos) 
-
 
 df_mex_s <- df_nac %>%
   dplyr::filter(Estado %in% c("SON", "Nacional", "SIN", "CHH", "BCN")) %>%
@@ -421,7 +417,8 @@ plotly::plot_ly(data = df_pp,
 ### **Evolución de Casos Confirmados**
     
 ```{r}
-plotly::plot_ly(data = df_s) %>%
+
+plotly::plot_ly(data = df_s %>% filter(Fecha >= "2020-03-15")) %>%
   plotly::add_trace(x = ~ Fecha,
                     y = ~ SON,
                     type = "scatter",
@@ -429,6 +426,20 @@ plotly::plot_ly(data = df_s) %>%
                     name = "Sonora",
                     line = list(color = confirmados_color),
                     marker = list(color = confirmados_color)) %>%
+  plotly::add_trace(x = ~ Fecha,
+                    y = ~ CHH,
+                    type = "scatter",
+                    mode = "lines+markers",
+                    name = "Chihuahua",
+                    line = list(color = rosa_color),
+                    marker = list(color = rosa_color)) %>%
+  plotly::add_trace(x = ~ Fecha,
+                    y = ~ SIN,
+                    type = "scatter",
+                    mode = "lines+markers",
+                    name = "Sinaloa",
+                    line = list(color = decesos_color),
+                    marker = list(color = decesos_color)) %>%
   plotly::add_trace(x = ~ Fecha,
                     y = ~ Nacional,
                     type = "scatter",
@@ -487,7 +498,9 @@ df_poblacion <- data.frame(
  
 df_c %>% dplyr::left_join(df_poblacion) %>%
   dplyr::mutate(
-    p.Confirmados = 100000 * Confirmados / Poblacion,
+    p.Confirmados = as.numeric(
+      format(100000 * Confirmados / Poblacion, digits = 4)
+    ),
   ) %>%
   plotly::plot_ly(y = ~ p.Confirmados,
                   x = ~ Densidad,
@@ -498,10 +511,10 @@ df_c %>% dplyr::left_join(df_poblacion) %>%
                   marker = list(sizemode = 'diameter' , opacity = 0.5),
                   hoverinfo = 'text',
                   text = ~paste("</br>", Estado, 
-                                "</br> Casos Confirmados: ", Confirmados,
+                                "</br> Confirmados: ", Confirmados,
                                 "</br> Decesos: ", Decesos,
-                                "</br> Confirmados por 100K Hab: ", p.Confirmados,
-                                "</br> Densidad de pob (Hab/m2): ", Densidad
+                                "</br> Incidencia: ", p.Confirmados,
+                                "</br> Densidad de pob: ", Densidad
                                 )
                  ) %>%
     plotly::layout(yaxis = list(title = "Casos por 100 mil hab", fixedrange = TRUE),
@@ -530,12 +543,9 @@ df_c %>% dplyr::left_join(df_poblacion) %>%
 ### **Casos nuevos Confirmados al `r  format(as.Date(max(df_s$Fecha)), "%d/%m/%y")`**
     
 ```{r}
-df_s2 <- df_s
-df_s2$t.Arizona[df_s2$Fecha == max(df_s2$Fecha)] <- df_s2$t.Arizona[df_s2$Fecha == max(df_s2$Fecha) - 1]
 
-
-df_s2 %>%   
-  dplyr::filter(Fecha == max(df_s2$Fecha)) %>%
+df_s %>%   
+  dplyr::filter(Fecha == max(Fecha)) %>%
   dplyr::select(Fecha, t.SON, t.Nacional, t.Arizona, t.CHH, t.SIN, t.BCN) %>%
   dplyr::rename(
     Nacional = t.Nacional,
@@ -764,44 +774,28 @@ valueBox(letalidad, icon = "fa-user", color = confirmados_color)
 Row  
 -------------------------------------
 
-### **Evolución de Casos en Sonora**
+### **Distribución por edad**
     
 ```{r}
 
-plotly::plot_ly(data = df_son_s) %>%
-  plotly::add_trace(x = ~ Fecha,
-                    y = ~ Confirmados,
-                    type = "scatter",
-                    mode = "lines+markers",
-                    name = "Confirmados",
-                    line = list(color = confirmados_color),
-                    marker = list(color = confirmados_color)) %>%
-  plotly::add_trace(x = ~ Fecha,
-                    y = ~ Importados,
-                    type = "scatter",
-                    mode = "lines+markers",
-                    name = "Importados",
-                    line = list(color = recuperados_color),
-                    marker = list(color = recuperados_color)) %>%
-  plotly::add_trace(x = ~ Fecha,
-                    y = ~ Locales,
-                    type = "scatter",
-                    mode = 'lines+markers',
-                    name = "Locales",
-                    line = list(color = activos_color),
-                    marker = list(color = activos_color)) %>%
-  plotly::add_trace(x = ~ Fecha,
-                    y = ~ Sospechosos,
-                    type = "scatter",
-                    mode = 'lines+markers',
-                    name = "Sospechosos",
-                    line = list(color = decesos_color),
-                    marker = list(color = decesos_color)) %>%
-  plotly::layout(title = "",
-                 yaxis = list(title = "Casos", fixedrange = TRUE),
+edad.df <- read.csv("../data/edad.csv", stringsAsFactors = FALSE)
+plotly::plot_ly(data = edad.df, 
+                x = ~ Edad, 
+                y = ~ Casos, 
+                type = "bar", 
+                name = "Activos",
+                marker = list(color = confirmados_color)) %>%
+  plotly::layout(barmode = 'stack',
+                 yaxis = list(title = "Casos", fixedrange = TRUE), 
                  xaxis = list(title = "", fixedrange = TRUE),
-                 legend = list(x = 0.1, y = 0.9),
-                 hovermode = "compare") %>%
+                 hovermode = "compare",
+                 margin =  list(
+                   # l = 60,
+                   # r = 40,
+                   b = 10,
+                   t = 10,
+                   pad = 2
+                 )) %>%
   plotly::config(displaylogo = FALSE,
                  modeBarButtonsToRemove = list(
                    'sendDataToCloud',
@@ -819,7 +813,57 @@ plotly::plot_ly(data = df_son_s) %>%
                    'toggleSpikelines'
                 ))
 
-  
+
+# plotly::plot_ly(data = df_son_s) %>%
+#   plotly::add_trace(x = ~ Fecha,
+#                     y = ~ Confirmados,
+#                     type = "scatter",
+#                     mode = "lines+markers",
+#                     name = "Confirmados",
+#                     line = list(color = confirmados_color),
+#                     marker = list(color = confirmados_color)) %>%
+#   plotly::add_trace(x = ~ Fecha,
+#                     y = ~ Importados,
+#                     type = "scatter",
+#                     mode = "lines+markers",
+#                     name = "Importados",
+#                     line = list(color = recuperados_color),
+#                     marker = list(color = recuperados_color)) %>%
+#   plotly::add_trace(x = ~ Fecha,
+#                     y = ~ Locales,
+#                     type = "scatter",
+#                     mode = 'lines+markers',
+#                     name = "Locales",
+#                     line = list(color = activos_color),
+#                     marker = list(color = activos_color)) %>%
+#   plotly::add_trace(x = ~ Fecha,
+#                     y = ~ Sospechosos,
+#                     type = "scatter",
+#                     mode = 'lines+markers',
+#                     name = "Sospechosos",
+#                     line = list(color = decesos_color),
+#                     marker = list(color = decesos_color)) %>%
+#   plotly::layout(title = "",
+#                  yaxis = list(title = "Casos", fixedrange = TRUE),
+#                  xaxis = list(title = "", fixedrange = TRUE),
+#                  legend = list(x = 0.1, y = 0.9),
+#                  hovermode = "compare") %>%
+#   plotly::config(displaylogo = FALSE,
+#                  modeBarButtonsToRemove = list(
+#                    'sendDataToCloud',
+#                    'zoom2d',
+#                    'pan2d',
+#                    'select2d',
+#                    'lasso2d',
+#                    'zoomIn2d', 
+#                    'zoomOut2d',
+#                    #'toImage',
+#                    'autoScale2d',
+#                    'resetScale2d',
+#                    'hoverClosestCartesian',
+#                    'hoverCompareCartesian',
+#                    'toggleSpikelines'
+#                 ))
 
 ```
 
@@ -900,16 +944,18 @@ read.csv("../data/servicio_medico.csv", stringsAsFactors = FALSE) %>%
 ```{r}
 hosp <- sum(as.numeric(df_sssc$Tipo.Atencion == "Hospitalizado"), na.rm = TRUE)
 hosp <- last(df_mio$Hospitalizados)
+graves <- last(df_mio$Graves)
 
 plotly::plot_ly(
     domain = list(x = c(0, 1), y = c(0, 1)),
     value = hosp,
-    title = list(text = "Hospitalizados"),
+    title = list(text = ""),
     type = "indicator",
     mode = "gauge+number",
     gauge = list(
       axis = list(range = list(NULL, nrow(df_sssc))),
-      bar = list(color = "red")
+      bar = list(color = "red"),
+      steps = list( list(range = c(0, graves), color = "darkred"))
     ) 
   ) %>%
   plotly::layout(margin = list(l=20,r=30)) %>%
@@ -938,23 +984,31 @@ Los datos sobre el proceso del COVID-19 en el Estado de Sonora se reciben diaria
 Los datos sobre el proceso del COVID-19 de los estados de México se tomaron del [repositorio de datos mantenido por Gabriel Alfonso Carranco-Sapiéns](https://github.com/carranco-sga/Mexico-COVID-19). Esta base se actualiza cada día a partir de la información de la [SSA](https://www.gob.mx/salud). Los datos sobre la población de México se tomaron de [INEGI](https://www.inegi.org.mx/app/tabulados/interactivos/?px=Poblacion_07&bd=Poblacion).
 Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del [Centro de recursos sobre Coronavirus](https://coronavirus.jhu.edu) de la Universidad Johns Hopkins University & Medicine. Esta base de datos se actualiza cada día a media noche y se puede obtener [aquí](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data). 
 
-**Indicadores Sonora**
+**Definición de Variables**
 
-Confirmados: cantidad de pruebas que dieron positivo en SARS-CoV2 
+- *Confirmados*: cantidad de pruebas que resultaron positivas a la enfermedad (SARS-CoV2)
 
-Activos: Confirmados - Recuperados - Decesos
+- *Recuperados*: cantidad de pacientes confirmados dados de alta
 
-Recuperados: cantidad de pacientes confirmados dados de alta 
+- *Decesos*: cantidad de pacientes fallecidos en casos confirmados
 
-Decesos: cantidad de pacientes fallecidos en casos confirmados
+- *Mediana de edad*: mediana estadística del rango de edades de casos confirmados
 
-Mediana de edad: mediana del rango de edades de casos confirmados
+- *Pruebas realizadas*: cantidad pruebas realizadas en total
 
-Pruebas realizadas: cantidad pruebas realizadas en total
+- *Pruebas negativas*: cantidad pruebas que dieron negativo en SARS-CoV2
 
-Pruebas negativas: cantidad pruebas que dieron negativo en SARS-CoV2
+**Indicadores**
 
-Sospechosos: Pruebas realizadas - Confirmados - Pruebas negativas
+Los indicadores son calculados a partir de las siguientes fórmulas:
+
+- Activos = Confirmados  -  (Recuperados + Decesos)
+
+- Sospechosos = Pruebas realizadas - (Confirmados + Pruebas negativas)
+
+- Incidencia = Confirmados por cada 100 mil habitantes.
+
+- Tasa de Letalidad = 100 * Decesos / Confirmados
 
 ---------
 
