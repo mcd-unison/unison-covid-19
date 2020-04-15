@@ -18,7 +18,7 @@ library(tidyverse)
 library(magrittr)
 
 # El dia de hoy (para los archivos)
-hoy.jh <- format(Sys.Date(), "%m-%d-%Y")
+hoy.jh <- format(Sys.Date() - 1, "%m-%d-%Y")
 hoy.ss <- format(Sys.Date() - 1, "%d.%m.%y")
 
 
@@ -631,7 +631,7 @@ az_map <- df_az %>%
 
 map_object <<- map_object %>%
   circulitos(az_map, pal, "Arizona", 0.6,
-             c("Estado","Municipio", "Confirmados", "Recuperados", "Decesos"))
+             c("Municipio", "Confirmados", "Decesos"))
 
 #-----------------Segunda Capa: Estados----------------------------
 edos_map <-df_estados %>% dplyr::left_join(
@@ -643,7 +643,7 @@ edos_map <-df_estados %>% dplyr::left_join(
   dplyr::mutate(Municipio = Estado)
 
 map_object <<- map_object %>%
-  circulitos(edos_map, pal, "Estados", 0.6, c("Estado","Confirmados", "Importados", "Decesos"))
+  circulitos(edos_map, pal, "Estados", 0.6, c("Estado","Confirmados", "Decesos"))
 
 
 #-----------------Tercera Capa: Municipios Sonora----------------
@@ -715,7 +715,7 @@ valueBox(negativos, icon = "fa-check-square", color = recuperados_color)
 
 ```{r}
 
-letalidad <- round(100 * last(df_mio$Decesos) / last(df_mio$Confirmados))
+letalidad <- format(100 * df_son_c$Decesos / df_son_c$Confirmados, digits = 3)
 valueBox(letalidad, icon = "fa-user", color = confirmados_color)
 
 ```
@@ -831,7 +831,10 @@ df_mio %>%
   dplyr::filter(Municipio != "Estado") %>%
   dplyr::select(Municipio, Confirmados, Incidencia, Decesos) %>%
   dplyr::arrange(-`Confirmados`) %>%
-  knitr::kable()
+  knitr::kable() %>% 
+  kableExtra::add_footnote(
+    "Incidencia = Confirmados por 100 mil habitantes", notation = "symbol"
+  )
 
     # DT::datatable(rownames = FALSE,
     #         colnames = c("Municipio", "Confirmados",
