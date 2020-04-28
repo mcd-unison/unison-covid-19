@@ -17,10 +17,12 @@ library(flexdashboard)
 library(tidyverse)
 library(magrittr)
 
-# El dia de hoy (para los archivos)
-hoy.jh <- format(Sys.Date() - 1, "%m-%d-%Y")
-hoy.ss <- format(Sys.Date() - 1, "%d.%m.%y")
+dir.danica = paste("../data/BASE COVID-19-23.04.20-IDCL-BM.xlsx")
 
+
+# El dia de hoy (para los archivos)
+hoy.jh <- format(Sys.Date(), "%m-%d-%Y")
+hoy.ss <- format(Sys.Date() - 1, "%d.%m.%y")
 
 #------------------ Colores ------------------
 # Set colors
@@ -31,9 +33,22 @@ recuperados_color <- "#46B861"
 decesos_color <- "darkgrey"
 rosa_color <- "#FF1493"
 
+#--------------Los datos de Danica-------------
+
+df.denica <- readxl::read_xlsx(dir.danica)
+df.extracto <- df.denica %>%
+  group_by(`MUN RES`) %>%
+  summarise(
+    `Pruebas en proceso` = sum(is.na(RESULTADO)),
+    Confirmados = sum(grepl("SARS-CoV", RESULTADO)),
+    Negativos = sum(!grepl("SARS-CoV", RESULTADO) & !is.na(RESULTADO))
+  ) %>%
+  rename(Municipio = `MUN RES`)
+
 #--------------- Datos Arizona------------------
 
 direccion <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/"
+
 
 df <- read.csv(paste(direccion, hoy.jh, ".csv", sep=''), stringsAsFactors = FALSE) %>%
   mutate(Fecha = as.Date(Last_Update)) %>%
@@ -74,6 +89,8 @@ df_az <- read.csv(paste(direccion, hoy.jh, '.csv', sep=''), stringsAsFactors = F
 #----------------Datos México ----------------------------
 # Del repositorio de [Gabriel Alfonso Carranco-Sapiéns](https://github.com/carranco-sga/Mexico-COVID-19)
 dir_nac <- "https://raw.githubusercontent.com/carranco-sga/Mexico-COVID-19/master/Mexico_COVID19.csv"
+
+dir_nac <- "https://raw.githubusercontent.com/carranco-sga/Mexico-COVID-19/master/Mexico_COVID19_CTD.csv"
 
 df_nac <- read.csv(dir_nac, stringsAsFactors = FALSE) %>% 
   rename_all(~sub('_D', '_Decesos', .x)) %>%
@@ -128,6 +145,20 @@ df_estados <- df_nac  %>%
     )
   ) 
 
+###############################################
+# Solo por hoY ##############################
+#############################################
+df_estados$Confirmados[df_estados$Estado == "Nacional"] <- 15529
+df_estados$Confirmados[df_estados$Estado == "Sinaloa"] <- 795
+df_estados$Confirmados[df_estados$Estado == "Chihuahua"] <- 271
+df_estados$Confirmados[df_estados$Estado == "Baja California"] <- 1301
+
+df_estados$Decesos[df_estados$Estado == "Nacional"]  <- 1434
+df_estados$Decesos[df_estados$Estado == "Sinaloa"]  <- 122
+df_estados$Decesos[df_estados$Estado == "Chihuahua"]  <- 58
+df_estados$Decesos[df_estados$Estado == "Baja California"]  <- 165
+
+
 
 #--------------- Datos de Sonora y sus Municipios -------------
 
@@ -164,6 +195,23 @@ df_nac_c <- df_nac  %>%
       'Nacional' = 'Nacional',
       .default = 'Otros'
   ))
+
+
+###############################################
+# Solo por hoY ##############################
+#############################################
+df_nac_c$Confirmados[df_nac_c$Estado == "Nacional"] <- 15529
+df_nac_c$Confirmados[df_nac_c$Estado == "Sinaloa"] <- 795
+df_nac_c$Confirmados[df_nac_c$Estado == "Chihuahua"] <- 271
+df_nac_c$Confirmados[df_nac_c$Estado == "Baja California"] <- 1301
+
+df_nac_c$Decesos[df_nac_c$Estado == "Nacional"]  <- 1434
+df_nac_c$Decesos[df_nac_c$Estado == "Sinaloa"]  <- 122
+df_nac_c$Decesos[df_nac_c$Estado == "Chihuahua"]  <- 58
+df_nac_c$Decesos[df_nac_c$Estado == "Baja California"]  <- 165
+
+
+
 
 df_c <- df_az_c %>%
   dplyr::full_join(df_nac_c) 
@@ -231,6 +279,14 @@ df_az_s <- read.csv(dir_az_s, check.names=FALSE, stringsAsFactors=FALSE)  %>%
 df_s <- df.son %>% 
   left_join(df_mex_s, by = "Fecha") %>%
   left_join(df_az_s, by = "Fecha") 
+
+################################################
+df_s$`Baja California`[df_s$Fecha == max(df_s$Fecha)] <- df_c$Confirmados[df_c$Estado == "Baja California"]
+df_s$`Sinaloa`[df_s$Fecha == max(df_s$Fecha)] <- df_c$Confirmados[df_c$Estado == "Sinaloa"]
+df_s$`Chihuahua`[df_s$Fecha == max(df_s$Fecha)] <- df_c$Confirmados[df_c$Estado == "Chihuahua"]
+df_s$`Nacional`[df_s$Fecha == max(df_s$Fecha)] <- df_c$Confirmados[df_c$Estado == "Nacional"]
+###################################################
+
 
 tiempo.duplicacion <- function (serie){
   q <- last(diff(serie)) / last(serie)
@@ -482,7 +538,9 @@ plotly::plot_ly(data = df.doblas, x = ~Fecha) %>%
     opacity = 0.4,
     line = list(color = 'lightred'),
     fillcolor = 'lightred',
-    name = "duplica entre 3 y 4 días"
+    name = "duplica entre 3 y 4 días",
+    text = ~paste("Tendríamos", round(dobla.3), "casos", sep=" "),
+    hoverinfo = 'text'
   ) %>%
   plotly::add_ribbons(
     ymin = ~dobla.7,
@@ -490,7 +548,9 @@ plotly::plot_ly(data = df.doblas, x = ~Fecha) %>%
     opacity = 0.4,
     line = list(color = 'yellow'),
     fillcolor = 'yellow',
-    name = "duplica entre 4 y 7 días"
+    name = "duplica entre 4 y 7 días",
+    text = ~paste("Tendríamos", round(dobla.4), "casos", sep=" "),
+    hoverinfo = 'text'
   ) %>%
   plotly::add_ribbons(
     ymin = ~(0 * dobla.7),
@@ -498,7 +558,9 @@ plotly::plot_ly(data = df.doblas, x = ~Fecha) %>%
     opacity = 0.4,
     line = list(color = 'lightgreen'),
     fillcolor = 'lightgreen',
-    name = "duplica en más de 7 días"
+    name = "duplica en más de 7 días",
+    text = ~paste("Tendríamos", round(dobla.7), "casos", sep=" "),
+    hoverinfo = 'text'
   ) %>%
   plotly::layout(
     legend = list(x=0.05, y = 0.95, opacity=0.7),
@@ -517,8 +579,9 @@ plotly::plot_ly(data = df.doblas, x = ~Fecha) %>%
       'sendDataToCloud','zoom2d', 'pan2d', 'select2d',
       'lasso2d', 'zoomIn2d','zoomOut2d',
       #'toImage',
-      'autoScale2d', 'resetScale2d', 'hoverClosestCartesian',
-      'hoverCompareCartesian', 'toggleSpikelines'))
+      'autoScale2d', 'resetScale2d', 
+      #'hoverClosestCartesian', 'hoverCompareCartesian', 
+      'toggleSpikelines'))
 
 ```   
 
@@ -591,8 +654,8 @@ map_object <- leaflet(
   )
 
 pal <- colorFactor(
-   c("red", "green", "blue"), 
-   domain = c("Arizona", "Estados", "Sonora")
+   c("blue", confirmados_color, decesos_color, "red"), 
+   domain = c("Arizona", "Estados", "Sonora", "Negativos")
 )
 
 circulitos <- function (cosa, df, pal, pal.str, opacidad, info.popup) {
@@ -650,14 +713,51 @@ map_object <<- map_object %>%
 mun_map <- df_municipios %>% dplyr::left_join(
   read.csv("../data/municipios_latlon.csv", stringsAsFactors = FALSE),
   by = "Municipio"
+) %>% left_join(
+  df.extracto %>% select(-Confirmados), 
+  by = "Municipio"
 )
 
 map_object <<- map_object %>%
   circulitos(mun_map, pal, "Sonora", 0.99, 
-             c("Municipio","Confirmados", "Decesos"))
+             c("Municipio","Confirmados", "Decesos", "Negativos", "Pruebas en proceso"))
+
+#-----------------Cuarta Capa: Municipios sin confirmados----------
+
+
+mun_nmap <- df.extracto %>% 
+  select(-Confirmados) %>% 
+  dplyr::left_join(df_municipios, by = "Municipio") %>%
+  filter(is.na(Confirmados)) %>%
+  select(Municipio, Negativos, `Pruebas en proceso`) %>%
+  dplyr::left_join(
+    read.csv("../data/municipios_latlon.csv", stringsAsFactors = FALSE),
+    by = "Municipio"
+  ) %>%
+  mutate(Confirmados = 2) %>%
+  filter(!is.na(Lat))
+
+map_object <<- map_object %>%
+  addCircleMarkers(
+    data= mun_nmap,
+    lng= ~Long, lat= ~Lat,
+    label= ~paste(Municipio, ", pruebas: ", Negativos + `Pruebas en proceso`, sep = ''),
+    color = ~pal("Negativos"),
+    stroke = FALSE, fillOpacity = 0.9,
+    radius = ~(3 + 2*log(Confirmados)),
+    popup =  leafpop::popupTable(
+      mun_nmap,
+      feature.id = FALSE,
+      row.numbers = FALSE,
+      zcol = c("Municipio", "Negativos", "Pruebas en proceso")
+    ),
+    labelOptions = labelOptions(
+      noHide = F,
+      direction = 'auto'
+    )
+  )
 
 map_object
-  
 
 #-----------------Configuración final------------------------ 
 # map_object #%>%
@@ -685,7 +785,7 @@ Row
 
 ```{r}
 
-gen.per <- round( 100 * last(df_mio$Mujeres) / last(df_mio$Confirmados))
+gen.per <- format( 100 * last(df_mio$Mujeres) / last(df_mio$Confirmados), digits = 3)
 valueBox(
   value = gen.per, 
   caption = "% de Casos Confirmados son Mujeres", 
@@ -935,13 +1035,13 @@ Este tablero es un recurso elaborado por un grupo de profesores del [Departament
 
 **Datos**
 
-Los datos sobre el proceso del COVID-19 en el Estado de Sonora se reciben diariamente de la [Secretaría de Salud del Estado de Sonora](https://www.sonora.gob.mx/temas-de-interes/salud.html), gracias a la colaboración entre la Universidad de Sonora y el Gobierno del Estado durante este periodo excepcional.
+Los datos sobre el proceso del COVID-19 en el Estado de Sonora se reciben diariamente de la [Secretaría de Salud del Estado de Sonora](https://www.sonora.gob.mx/temas-de-interes/salud.html).
 Los datos sobre el proceso del COVID-19 de los estados de México se tomaron del [repositorio de datos mantenido por Gabriel Alfonso Carranco-Sapiéns](https://github.com/carranco-sga/Mexico-COVID-19). Esta base se actualiza cada día a partir de la información de la [SSA](https://www.gob.mx/salud). Los datos sobre la población de México se tomaron de [INEGI](https://www.inegi.org.mx/app/tabulados/interactivos/?px=Poblacion_07&bd=Poblacion).
 Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del [Centro de recursos sobre Coronavirus](https://coronavirus.jhu.edu) de la Universidad Johns Hopkins University & Medicine. Esta base de datos se actualiza cada día y se puede obtener [aquí](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data). 
 
-**Definición de Variables**
+**Definición de variables y términos**
 
-- *Confirmados*: cantidad de pruebas que resultaron positivas a la enfermedad (SARS-CoV2)
+- *Confirmados*: cantidad de pruebas que resultaron positivas a SARS-CoV2
 
 - *Recuperados*: cantidad de pacientes confirmados dados de alta
 
@@ -949,10 +1049,11 @@ Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del
 
 - *Mediana de edad*: mediana estadística del rango de edades de casos confirmados
 
-- *Pruebas realizadas*: cantidad pruebas realizadas en total
+- *Pruebas realizadas*: cantidad de casos confirmados más cantidad de pruebas negativas
 
-- *Pruebas negativas*: cantidad pruebas que dieron negativo en SARS-CoV2
+- *Pruebas negativas*: cantidad pruebas que dieron negativo a SARS-CoV2
 
+- *Pruebas en proceso*: cantidad pruebas que se encuentran en proceso a la espectativa del resultado 
 - *Incidencia*: Confirmados por cada 100 mil habitantes.
 
 
@@ -960,9 +1061,10 @@ Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del
 
 Los indicadores son calculados a partir de las siguientes fórmulas:
 
-$$Activos = Confirmados  -  (Recuperados + Decesos)$$
-$$Sospechosos = Pruebas\ realizadas - (Confirmados + Pruebas\ negativas)$$
-$$Tasa\ de\ Letalidad =  \frac{Decesos}{Confirmados} 100$$
+$Activos = Confirmados  -  (Recuperados + Decesos)$
+
+
+$Tasa\ de\ Letalidad =  \frac{Decesos}{Confirmados} 100$
 
 ---------
 
@@ -981,7 +1083,7 @@ Las cantidades corresponden a las mediciones hechas a partir del día 2 de marzo
 El tablero se genera diariamente como una página web estática. Es posible realizar un *fork* al [proyecto en Github](https://github.com/mcd-unison/unison-covid-19), descargarlo, modificarlo y publicar un tablero similar en las páginas web que desees.
 
 **Contacto**
-[O. Gutú](mailto:olivia.gutu@unison.mx) | [J. P.  Soto](mailto:juanpablo.soto@unison.mx) | [J. Waissman](mailto:julio.waissman@unison.mx)
+[O. Gutú](mailto:olivia.gutu@unison.mx) | [J. P.  Soto](mailto:juanpablo.soto@unison.mx) | [J. Waissman](mailto:julio.waissman@unison.mx) | [C. Minjárez](mailto:carlos.minjarez@unison.mx)
 
 **Licencia MIT**
 

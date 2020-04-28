@@ -1,0 +1,40 @@
+---
+title: "Prueba de mapa con municipios"
+author: "Julio Waissman Vilanova"
+date: "16/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(magrittr)
+library(tidyverse)
+
+dir.acumulados = "../data/acumulado.csv"
+dir.danica = paste("../data/BASE COVID-19-15.04.20-IDCL-BM.xlsx")
+```
+
+## Cargando los datos
+
+```{r datos}
+
+df.denica <- readxl::read_xlsx(dir.danica)
+df.extracto <- df.denica %>%
+  group_by(`MUN RES`) %>%
+  summarise(
+    en.proceso = sum(is.na(RESULTADO)),
+    Confirmados = sum(grepl("SARS-CoV", RESULTADO)),
+    Negativos = sum(!grepl("SARS-CoV", RESULTADO) & !is.na(RESULTADO))
+  ) %>%
+  rename(Municipio = `MUN RES`)
+
+```
+
+## Haciendo los mapas
+
+
+```{r mapa}
+plot(pressure)
+```
+
