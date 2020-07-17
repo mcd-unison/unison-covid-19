@@ -32,7 +32,7 @@ window.FlexDashboardComponents = [];
 </script>
 
 <script id="flexdashboard-navbar" type="application/json">
-[{"icon":"fa-share-alt","items":[{"title":"Twitter","icon":"fa-twitter"},{"title":"Facebook","icon":"fa-facebook"},{"title":"Google+","icon":"fa-google-plus"},{"title":"LinkedIn","icon":"fa-linkedin"},{"title":"Pinterest","icon":"fa-pinterest"}]}]
+[{"icon":"fa-share-alt","items":[{"title":"Twitter","icon":"fa-twitter"},{"title":"Facebook","icon":"fa-facebook"},{"title":"Google+","icon":"fa-google-plus"},{"title":"LinkedIn","icon":"fa-linkedin"},{"title":"Pinterest","icon":"fa-pinterest"}, {"title":"Compartir","icon":"fa-link"}]}]
 </script>
 <script src="site_libs/header-attrs-2.1/header-attrs.js"></script>
 <script src="site_libs/jquery-1.12.4/jquery.min.js"></script>
@@ -832,7 +832,7 @@ html, body {
 </button>
 
 <span class="navbar-logo pull-left">
-  
+
 </span>
 <span class="navbar-brand">
   COVID-19 Sonora
@@ -1193,8 +1193,10 @@ var FlexDashboard = (function () {
       "facebook": "https://www.facebook.com/sharer/sharer.php?s=100&p[url]="+encodeURIComponent(location.href),
       "google-plus": "https://plus.google.com/share?url="+encodeURIComponent(location.href),
       "linkedin": "https://www.linkedin.com/shareArticle?mini=true&url="+encodeURIComponent(location.href) + "&title=" + encodeURIComponent(document.title),
-      "pinterest": "https://pinterest.com/pin/create/link/?url="+encodeURIComponent(location.href) + "&description=" + encodeURIComponent(document.title)
+      "pinterest": "https://pinterest.com/pin/create/link/?url="+encodeURIComponent(location.href) + "&description=" + encodeURIComponent(document.title),
+      "clipboard": "ignore"
     };
+
 
     var makeSocialLink = function(a, href) {
       a.attr('href', '#');
@@ -1208,7 +1210,12 @@ var FlexDashboard = (function () {
       if (iconName.indexOf(key) !== -1)
         makeSocialLink(a, value);
     });
+
+    function isFunction(functionToCheck) {
+      return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]';
+    }
   }
+
 
   // layout a dashboard page
   function layoutDashboardPage(page) {
@@ -2964,6 +2971,22 @@ $(document).ready(function () {
     defaultFigHeight: 460,
     defaultFigWidthMobile: 360,
     defaultFigHeightMobile: 460
+  });
+
+  const lu = document.querySelectorAll('.dropdown-menu li');
+  const clipboard = [...lu].find(li => { // para user el método find ocupamos convertir el objeto a Array
+    return li.firstElementChild.text === 'Compartir';
+  });
+  clipboard.firstElementChild.setAttribute('href', '#');
+
+  clipboard.addEventListener('click',(e) => {
+    var dummy = document.createElement('input'), url = window.location.href;
+    document.body.appendChild(dummy);
+    dummy.value = url;
+    dummy.select();
+    document.execCommand('copy');
+    dummy.remove();
+    alert("Dirección copiada");
   });
 });
 </script>
