@@ -1193,8 +1193,7 @@ var FlexDashboard = (function () {
       "facebook": "https://www.facebook.com/sharer/sharer.php?s=100&p[url]="+encodeURIComponent(location.href),
       "google-plus": "https://plus.google.com/share?url="+encodeURIComponent(location.href),
       "linkedin": "https://www.linkedin.com/shareArticle?mini=true&url="+encodeURIComponent(location.href) + "&title=" + encodeURIComponent(document.title),
-      "pinterest": "https://pinterest.com/pin/create/link/?url="+encodeURIComponent(location.href) + "&description=" + encodeURIComponent(document.title),
-      "clipboard": "ignore"
+      "pinterest": "https://pinterest.com/pin/create/link/?url="+encodeURIComponent(location.href) + "&description=" + encodeURIComponent(document.title)
     };
 
 
@@ -1210,12 +1209,7 @@ var FlexDashboard = (function () {
       if (iconName.indexOf(key) !== -1)
         makeSocialLink(a, value);
     });
-
-    function isFunction(functionToCheck) {
-      return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]';
-    }
   }
-
 
   // layout a dashboard page
   function layoutDashboardPage(page) {
