@@ -2,105 +2,96 @@
 library(tidyverse)
 library(magrittr)
 
-### **¿Estámos aplanando la curva? Evolución a 14 días**
-
-
-```{r}
-
-df.doblas <- df.son %>% filter(Fecha >= max(Fecha) - 13)
-df.doblas$inc <- df.doblas$Sonora - first(df.doblas$Sonora) + 1
-df.doblas$dias <- 0:(nrow(df.doblas) - 1) 
-df.doblas <- df.doblas %>% 
+hoy <- Sys.Date()
+archivo <- paste("../data/", format(hoy, "%y%m%d"), "COVID19MEXICO.csv", sep='')
+if (!file.exists(archivo)) {
+  covid.mex.url <- "http://187.191.75.115/gobmx/salud/datos_abiertos/datos_abiertos_covid19.zip"
+  covid.mex.file <- download.file(url = covid.mex.url, destfile = "../data/datos_abiertos_covid19.zip")
+  unzip("../data/datos_abiertos_covid19.zip", exdir = "../data")
+}
+df.mexico.ts <- read.csv(archivo, stringsAsFactors = FALSE) %>%
+  mutate(FECHA_INGRESO = as.Date(FECHA_INGRESO, "%Y-%m-%d")) %>%
+  group_by(FECHA_INGRESO) %>%
+  summarise(
+    C.nuevos = sum(RESULTADO == 1),
+    D.nuevos = sum(RESULTADO == 1 & FECHA_DEF != "9999-99-99"),
+    Sinaloa.C.nuevos = sum(RESULTADO == 1 & ENTIDAD_RES == 25),
+    Sinaloa.D.nuevos = sum(RESULTADO == 1 & FECHA_DEF != "9999-99-99" & ENTIDAD_RES == 25),
+    Chihuahua.C.nuevos = sum(RESULTADO == 1 & ENTIDAD_RES == 08),
+    Chihuahua.D.nuevos = sum(RESULTADO == 1 & FECHA_DEF != "9999-99-99" & ENTIDAD_RES == 08),
+    BCN.C.nuevos = sum(RESULTADO == 1 & ENTIDAD_RES == 02),
+    BCN.D.nuevos = sum(RESULTADO == 1 & FECHA_DEF != "9999-99-99" & ENTIDAD_RES == 02),
+  ) %>%
   mutate(
-    dobla.2 = exp(log(2)*dias/2),
-    dobla.3 = exp(log(2)*dias/3),
-    dobla.5 = exp(log(2)*dias/5)
+    Confirmados = cumsum(C.nuevos),
+    Decesos = cumsum(D.nuevos),
+    Sinaloa = cumsum(Sinaloa.C.nuevos),
+    `Baja California` = cumsum(BCN.C.nuevos),
+    Chihuahua = cumsum(Chihuahua.C.nuevos)
   )
 
-plotly::plot_ly(data = df.doblas, x = ~Fecha) %>%
-  plotly::add_markers(
-    y = ~inc, 
-    text = ~paste(Sonora, "casos confirmados", sep=" "),
-    marker = list(color = "black"),
-    line = list(color = decesos_color),
-    name = "Casos",
-    hoverinfo = 'text'
-  ) %>%
-  plotly::add_ribbons(
-    ymin = ~dobla.3,
-    ymax = ~dobla.2,
-    opacity = 0.4,
-    line = list(color = 'lightred'),
-    fillcolor = 'lightred',
-    name = "dobla entre 2 y 3 días"
-  ) %>%
-  plotly::add_ribbons(
-    ymin = ~dobla.5,
-    ymax = ~dobla.3,
-    opacity = 0.4,
-    line = list(color = 'yellow'),
-    fillcolor = 'yellow',
-    name = "dobla entre 3 y 5 días"
-  ) %>%
-  plotly::add_ribbons(
-    ymin = ~(0 * dobla.5),
-    ymax = ~dobla.5,
-    opacity = 0.4,
-    line = list(color = 'lightblue'),
-    fillcolor = 'lightblue',
-    name = "dobla en más de 5 días"
-  ) %>%
-  plotly::layout(
-    legend = list(x=0.05, y = 0.95),
-    yaxis = list(title = "", zeroline = FALSE, showline = FALSE, 
-                 type = "log", 
-                 showticklabels = FALSE, showgrid = FALSE,
-                 fixedrange = TRUE),
-    xaxis = list(title = "", zeroline = FALSE, showline = FALSE, 
-                 showticklabels = TRUE, showgrid = FALSE,
-                 fixedrange = TRUE),
-    margin = list( l = 10, r = 10, b = 10, t = 10, pad = 2)
-  ) 
-```   
 
 
 
-### **Relación de Casos Confirmados por Población y por Densidad de Población**
+### **Nuevos casos suavizados (Hillo y SLRC) con promedio móvil de 7 días en escala log-log**
 
 ```{r}
 
-df_poblacion <- data.frame(
-  "Poblacion" = c(3406465, 2767761, 3155070, 2662480, 112336538, 6828065), 
-  "Densidad" = c(14.4, 51.7, 46.4, 15.9, 61, 22.34),
-  "Estado" = c("Chihuahua","Sinaloa", "Baja California", 
-               "Sonora", "Nacional", "Arizona")
-)
-
-
-df_c %>% dplyr::left_join(df_poblacion) %>%
-  dplyr::mutate(
-    p.Confirmados = as.numeric(
-      format(100000 * Confirmados / Poblacion, digits = 4)
-    ),
+df.son %>%
+  filter(Fecha >= fecha[1]) %>%
+  mutate(
+    hillo = Hillo.confirmados,
+    slrc = SLRC.confirmados,
+    caj = Cajeme.confirmados,
+    nog = Nogales.confirmados
   ) %>%
-  plotly::plot_ly(y = ~ p.Confirmados,
-                  x = ~ Densidad,
-                  size = ~  log(Confirmados),
-                  sizes = c(5, 70),
-                  type = 'scatter', mode = 'markers',
-                  color = ~Estado,
-                  marker = list(sizemode = 'diameter' , opacity = 0.5),
-                  hoverinfo = 'text',
-                  text = ~paste("</br>", Estado, 
-                                "</br> Confirmados: ", Confirmados,
-                                "</br> Decesos: ", Decesos,
-                                "</br> Incidencia: ", p.Confirmados,
-                                "</br> Densidad de pob: ", Densidad
-                  )
+  mutate(
+    v.son = ma(Sonora - lag(Sonora), 7),
+    v.hillo = ma(hillo - lag(hillo), 7),
+    v.slrc = ma(slrc - lag(slrc), 7),
+    v.caj = ma(caj - lag(caj), 7),
+    v.nog = ma(nog - lag(nog), 7),
   ) %>%
-  plotly::layout(yaxis = list(title = "Casos por 100 mil hab", fixedrange = TRUE),
-                 xaxis = list(title = "Densidad de Población (hab/m2)", fixedrange = TRUE),
-                 hovermode = "closest") %>%
+  filter(Fecha >= fecha[7]) %>%
+  plotly::plot_ly() %>%
+  plotly::add_trace(
+    y = ~v.son, 
+    type = 'scatter', 
+    mode = 'lines+markers', 
+    name = 'Sonora',
+    line = list(color = confirmados_color)
+  )%>%
+  plotly::add_trace(
+    y = ~v.hillo, 
+    type = 'scatter', 
+    mode = 'lines+markers', 
+    name = 'Hermosillo',
+    line = list(color = activos_color)
+  )%>%
+  plotly::add_trace(
+    y = ~v.slrc, 
+    type = 'scatter', 
+    mode = 'lines+markers', 
+    name = 'SLRC',
+    line = list(color = decesos_color)
+  )%>%
+  plotly::layout(
+    legend = list(x=0.01, y = 0.99, opacity=0.1),
+    yaxis = list(title = "Confirmados (log)", type = "log", zeroline = FALSE, 
+                 showline = FALSE, showticklabels = FALSE, 
+                 showgrid = FALSE, fixedrange = TRUE), 
+    xaxis = list(title = paste("días desde el ", format(fecha[7], "%d-%m-%Y"), " (log)", sep=''), 
+                 type = "log", zeroline = FALSE, 
+                 showline = TRUE, showticklabels = TRUE, 
+                 showgrid = FALSE, fixedrange = TRUE),
+    hovermode = "compare",
+    margin =  list(
+      # l = 60,
+      # r = 40,
+      b = 10,
+      t = 10,
+      pad = 2
+    )) %>%
   plotly::config(displaylogo = FALSE,
                  modeBarButtonsToRemove = list(
                    'sendDataToCloud',
@@ -118,68 +109,8 @@ df_c %>% dplyr::left_join(df_poblacion) %>%
                    'toggleSpikelines'
                  ))
 
-```   
-  
 
-
-### **Casos nuevos y tiempo de duplicación (en días) al `r  format(as.Date(max(df_s$Fecha)), "%d/%m/%y")`**
-
-```{r}
-
-
-plot.1 <- plotly::plot_ly(
-  data = df.variacion,
-  x = ~N.Confirmados,
-  y = ~reorder(Estado, N.Confirmados),
-  text = ~paste(N.Confirmados, "nuevos", sep=" "),
-  hoverinfo = 'text',
-  textposition = 'auto',
-  name = "C. nuevos",
-  type = "bar", 
-  marker = list(color = confirmados_color),
-  orientation = 'h') %>%
-  plotly::layout(
-    yaxis = list(title = "", zeroline = FALSE, showline = TRUE, 
-                 showticklabels = TRUE, showgrid = FALSE,
-                 fixedrange = TRUE),
-    xaxis = list(title = "", zeroline = FALSE, showline = FALSE, 
-                 showticklabels = FALSE, showgrid = FALSE,
-                 fixedrange = TRUE),
-    margin = list( l = 10, r = 10, b = 10, t = 10, pad = 2)) 
-
-plot.2 <- plotly::plot_ly(
-  data = df.variacion,
-  x = ~t.duplicacion,
-  y = ~reorder(Estado, N.Confirmados),
-  text = ~paste(format(t.duplicacion, digits = 3), "días", sep=" "),
-  hoverinfo = 'text',
-  textposition = 'auto',
-  name = "T. de dup.",
-  type = "bar", 
-  marker = list(color = decesos_color),
-  orientation = 'h') %>%
-  plotly::layout(
-    yaxis = list(title = "", zeroline = FALSE, showline = TRUE, 
-                 showticklabels = FALSE, showgrid = FALSE,
-                 fixedrange = TRUE),
-    xaxis = list(title = "", zeroline = FALSE, showline = FALSE, 
-                 showticklabels = FALSE, showgrid = FALSE,
-                 fixedrange = TRUE),
-    margin = list( l = 10, r = 10, b = 10, t = 10, pad = 2)) 
-
-plotly::subplot(plot.1, plot.2)  %>%
-  plotly::layout(
-    showlegend = FALSE
-  ) %>%
-  plotly::config(
-    displaylogo = FALSE,
-    modeBarButtonsToRemove = list(
-      'sendDataToCloud','zoom2d','pan2d', 'select2d', 'lasso2d',
-      'zoomIn2d', 'zoomOut2d',
-      #'toImage',
-      'autoScale2d', 'resetScale2d', 'hoverClosestCartesian',
-      'hoverCompareCartesian', 'toggleSpikelines'))
 
 
 ```
-  
+
