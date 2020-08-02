@@ -38,5 +38,5 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# Datos locales
-data/
+# Pruebas 
+pruebas/
