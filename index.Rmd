@@ -6,7 +6,6 @@ output:
     social: [ "menu"]
     orientation: rows
     vertical_layout: fill
-    #logo: logito.png
     favicon: favicon-mcd.png
 
 ---
@@ -27,11 +26,11 @@ library(magrittr)
 
 
 #--------------------Configuraciones generales---------------
-dir.danica <- paste("../data/BASE COVID-19-31.JULIO.20-BM.xlsx")
+dir.danica <- paste("../data/BASE COVID-19-02.AGO.20-BM.xlsx")
 carranco <- TRUE
 
 # El dia de hoy (para los archivos)
-hoy <- Sys.Date() - 1
+hoy <- Sys.Date()
 hoy.jh <- format(hoy, "%m-%d-%Y")
 
 # Fecha inicial para las gráficas de tendencias
