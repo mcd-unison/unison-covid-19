@@ -26,12 +26,15 @@ library(magrittr)
 
 
 #--------------------Configuraciones generales---------------
-dir.danica <- paste("../data/BASE COVID-19-02.AGO.20-BM.xlsx")
+dir.danica <- paste("../data/BASE COVID-19-23.SEP.20-BM.xlsx")
 carranco <- TRUE
 
 # El dia de hoy (para los archivos)
-hoy <- Sys.Date()
-hoy.jh <- format(hoy, "%m-%d-%Y")
+hoy <- Sys.Date() 
+hoy.jh <- format(hoy-1, "%m-%d-%Y")
+inicio.hospitaizados <- as.Date("2020-08-05")
+dia <- as.Date("2020-04-07")
+
 
 # Fecha inicial para las gráficas de tendencias
 inicio.tendencias <- as.Date("2020-05-01")
@@ -75,7 +78,7 @@ df_az <- read.csv(paste(direccion, hoy.jh, '.csv', sep=''), stringsAsFactors = F
   filter( 
     Province_State %in% c('Arizona', 'Nacional')
   ) %>%
-  mutate(Fecha = as.Date(Last_Update)) %>%
+  mutate(Fecha = as.Date(Last_Update, format="%m/%d/%y %h:%m")) %>%
   rename(
     Municipio = Admin2,
     Pais = Country_Region, 
@@ -184,7 +187,6 @@ df_s <- df.son %>%
   left_join(df.estados.serie, by = "Fecha") %>%
   left_join(df_az_s, by = "Fecha") 
 
-dia <- as.Date("2020-04-07")
 
 fecha <- c()
 Defunciones <- c()
@@ -210,7 +212,8 @@ df.tend <- data.frame(
 ) %>%
   mutate(
     Activos = Positivos - Defunciones - Recuperados,
-    Positividad = round(100 * Positivos / Pruebas)
+    Positividad = format( 100 * Positivos / Pruebas, digits = 2),
+    Letalidad = format(100 * Defunciones / Positivos, digits = 3)
   )
 
 
@@ -342,9 +345,14 @@ df.evol <- data.frame(
   Guaymas.decesos = Guaymas.decesos,
   AP.confirmados = AP.confirmados,
   AP.decesos = AP.decesos
+) 
+
+df.evol <- left_join(
+  df.evol,
+  select(df.tend, Fecha, Pruebas)
 )
 
-
+write.csv(df.evol, "../Datos-Covid19/por_fecha_publicacion.csv")
 
 ```
 
@@ -454,7 +462,7 @@ plotly::plot_ly(data = df_pp,
                 x = ~ reorder(Estado, Confirmados), 
                 y = ~ (ifelse(is.na(Recuperados), Confirmados - Decesos, NA)), 
                 type = "bar", 
-                name = "Confirmados (vivos)",
+                name = "Confirmados",
                 marker = list(color = confirmados_color)) %>%
   plotly::add_trace(y = ~ activos, 
                     name = "Activos",
@@ -468,21 +476,25 @@ plotly::plot_ly(data = df_pp,
   plotly::add_trace(y = ~ Decesos, 
                     name = "Decesos",
                     marker = list(color = decesos_color)) %>%
-  plotly::layout(barmode = 'stack',
-                 yaxis = list(title = "", zeroline = FALSE, 
-                              showline = FALSE, showticklabels = FALSE, 
-                              showgrid = FALSE, fixedrange = TRUE), 
-                 xaxis = list(title = "", zeroline = FALSE, 
-                              showline = TRUE, showticklabels = TRUE, 
-                              showgrid = FALSE, fixedrange = TRUE),
-                 hovermode = "compare",
-                 margin =  list(
-                   # l = 60,
-                   # r = 40,
-                   b = 10,
-                   t = 10,
-                   pad = 2
-                 )) %>%
+  plotly::layout(
+    barmode = 'stack',
+    legend = list(x = 0.01, y = .99, 
+                  text.font = list(fontsize=8), bg="transparent"), 
+    yaxis = list(title = "", zeroline = FALSE, 
+                 showline = FALSE, showticklabels = FALSE, 
+                 showgrid = FALSE, fixedrange = TRUE), 
+    xaxis = list(title = "", zeroline = FALSE, 
+                 showline = TRUE, showticklabels = TRUE, 
+                 showgrid = FALSE, fixedrange = TRUE),
+    hovermode = "compare",
+    margin =  list(
+    # l = 60,
+    # r = 40,
+    b = 10,
+    t = 10,
+    pad = 2
+    )
+  ) %>%
   plotly::config(displaylogo = FALSE,
                  modeBarButtonsToRemove = list(
                    'sendDataToCloud',
@@ -587,7 +599,7 @@ df.tend %>%
     Confirmados = Positivos - lag(Positivos)
   ) %>%
   filter(Fecha > max(Fecha) - 45) %>%
-  group_by(semana = cut(Fecha, "week")) %>% 
+  group_by(semana = cut(Fecha, "week")) %>%   # lubridate::epiweek(Fecha)
   summarize(
     Decesos = sum(Defunciones, na.rm = TRUE),
     Pruebas = sum(Pruebas, na.rm = TRUE),
@@ -613,7 +625,10 @@ df.tend %>%
                  showticklabels = FALSE, showgrid = FALSE, fixedrange = TRUE), 
     xaxis = list(title = "", zeroline = FALSE, showline = TRUE, 
                  showticklabels = TRUE, showgrid = FALSE, fixedrange = TRUE),
-    legend = list(x = 0.01, y = .99, text.font = list(fontsize=8)), 
+    legend = list(
+      orientation = "h", xanchor = "center", 
+      x = 0.5, y =-.2, text.font = list(fontsize=8)),
+      # x = 0.01, y = .99, text.font = list(fontsize=8)), 
     hovermode = "compare",
     margin =  list(
       # l = 60,
@@ -1474,6 +1489,85 @@ Row {data-height=80}
 <img align="right" height=70 src="logo-color.png" />
 
 
+Camas
+=======================================================================
+
+Row
+-------------------------------------------------------------------------
+
+### **Evolución de la ocupación hospitalaria en Sonora**
+
+```{r evo.general}
+
+df.hospitalizados <- read.csv("../Datos-Covid19/REPORTE-HOSPITALARIO/acumulados.csv")
+
+op <- 0.4
+df.hospitalizados %>% 
+mutate(fecha = as.Date(fecha)) %>%
+filter(fecha >= as.Date("2020-06-02", "%Y-%m-%d")) %>%
+plotly::plot_ly(x = ~fecha) %>%
+  plotly::add_ribbons(
+    ymax = ~Sonora_disponibles, ymin = ~(0.65 * Sonora_disponibles), opacity = op,
+    line = list(color = 'red'), fillcolor = 'red',
+    hoverinfo = 'text+x', text = ~paste(Sonora_disponibles, "camas disponibles"),
+    name = "Camas disponibles"
+  ) %>%
+  plotly::add_ribbons(
+    ymax = ~(0.65*Sonora_disponibles), ymin = ~(0.52 * Sonora_disponibles), opacity = op,
+    line = list(color = 'orange'), fillcolor = 'orange',
+    name = "65% ocupación",
+    hoverinfo = 'text', text = ~paste("65% ocupación"),
+  ) %>%
+  plotly::add_ribbons(
+    ymax = ~(0.52*Sonora_disponibles), ymin = ~(0.40 * Sonora_disponibles), opacity = op,
+    line = list(color = 'yellow'), fillcolor = 'yellow',
+    name = "52% ocupación",
+    hoverinfo = 'text', text = ~paste("52% ocupación"),
+  ) %>%
+  plotly::add_ribbons(
+    ymax = ~(0.40*Sonora_disponibles), ymin = ~(0.0 * Sonora_disponibles), opacity = op,
+    line = list(color = 'green'), fillcolor = 'green',
+    name = "40% ocupación",
+    hoverinfo = 'text', text = ~paste("40% ocupación"),
+  ) %>%
+  plotly::add_trace(
+    y = ~Sonora_ocupados,
+    type = "bar",
+    name = "Camas ocupadas",
+    marker = list(color = "darkblue"),
+    text = ~ paste(Sonora_ocupados, "camas ocupadas"),
+    hoverinfo = 'text'
+  ) %>%
+  plotly::layout(showlegend = TRUE, hovermode = "compare", title = "Camas ocupadas y disponibles en Sonora", 
+                 yaxis = list(title = "camas"), xaxis = list(title = "fecha")) %>%
+  plotly::layout(showlegend = TRUE, hovermode = "compare") %>%
+  plotly::config(
+    displaylogo = FALSE,
+    modeBarButtonsToRemove = list(
+      'sendDataToCloud',
+      'zoom2d',
+      'pan2d',
+      'select2d',
+      'lasso2d',
+      'zoomIn2d',
+      'zoomOut2d',
+      #'toImage',
+      'autoScale2d',
+      'resetScale2d',
+      'hoverClosestCartesian',
+      #'hoverCompareCartesian',
+      'toggleSpikelines'
+    )
+  )
+
+
+```
+
+Row {data-height=80}
+-----------------------------------------------------------------------
+<img align="right" height=70 src="logo-color.png" />
+
+
 Tendencias
 =======================================================================
 
@@ -1498,13 +1592,14 @@ df.son %>%
     name = 'Incremento confirmados',
     marker = list(color = '#C9EFF9'),
     hoverinfo = "text",
-    text = ~paste(nuevos, ' casos nuevos')
+    text = ~paste(nuevos, ' casos nuevos\n', Fecha, sep = "")
     ) %>%
   plotly::add_trace(
     y = ~nuevos.ma7, 
     type = 'scatter', 
-    mode = 'lines+markers', 
+    mode = 'lines', 
     name = 'Promedio movil a 7 días',
+    visible = "legendonly",
     line = list(color = '#45171D')
   )%>%
   plotly::layout(
@@ -1540,19 +1635,31 @@ df.son %>%
 
 ```{r}
 
-df.tend %>%
+read.csv("../data/positividadLESP.csv") %>%
+  mutate(Fecha = as.Date(Fecha, format = "%d/%m/%y" )) %>%
   filter(Fecha >= inicio.tendencias) %>%
+  left_join(df.tend, by = "Fecha") %>%
   plotly::plot_ly(x = ~Fecha) %>%
   plotly::add_trace(
     y = ~Positividad, 
     type = 'scatter', 
     mode = 'lines+markers', 
-    name = 'Porcentaje de Positividad',
+    name = 'Positividad acumulada global',
     marker = list(color = activos_color),
     hoverinfo = "text",
     text = ~paste(Positividad, '%')
   ) %>%
+  plotly::add_trace(
+    y = ~Positividad.LESP, 
+    type = 'scatter', 
+    mode = 'lines+markers', 
+    name = 'Positividad LESP',
+    marker = list(color = confirmados_color),
+    hoverinfo = "text",
+    text = ~paste(Positividad.LESP, '%')
+  ) %>%
   plotly::layout(
+    legend = list(x=0.01, y = 0.99, opacity=0.1),
     yaxis = list(title = "Positividad ( % )", fixedrange = TRUE), 
     xaxis = list(title = "", fixedrange = TRUE),
     hovermode = "compare",
@@ -1584,23 +1691,34 @@ df.tend %>%
 Row
 -----------------------------------------------------------------------
 
-### **Defunciones acumuladas en Sonora**
+### **Defunciones diarias por fecha de publicación en Sonora**
 
 ```{r}
 
 df.tend %>%
+  mutate(Def_diarias = Defunciones - lag(Defunciones)) %>%
+  mutate(nuevos.ma7 = ma(Def_diarias, 7)) %>%
   filter(Fecha >= inicio.tendencias) %>%
   plotly::plot_ly(x = ~Fecha) %>%
   plotly::add_trace(
-    y = ~Defunciones, 
+    y = ~Def_diarias, 
     type = 'bar', 
     #mode = 'lines+markers', 
-    name = 'Defunciones acumuladas',
+    name = 'Defunciones diarias',
     marker = list(color = decesos_color),
     hoverinfo = "text",
-    text = ~paste(Defunciones, 'decesos')
+    text = ~paste(Def_diarias, 'decesos')
   ) %>%
+    plotly::add_trace(
+    y = ~nuevos.ma7, 
+    type = 'scatter', 
+    mode = 'lines', 
+    name = 'Promedio movil a 7 días',
+    visible = "legendonly",
+    line = list(color = '#45171D')
+  )%>%
   plotly::layout(
+    legend = list(x=0.01, y = 0.99, opacity=0.1),
     yaxis = list(title = "Casos", fixedrange = TRUE), 
     xaxis = list(title = "", fixedrange = TRUE),
     hovermode = "compare",
@@ -1617,65 +1735,41 @@ df.tend %>%
       'sendDataToCloud', 'zoom2d', 'pan2d', 'select2d','lasso2d',
       'zoomIn2d', 'zoomOut2d',
       #'toImage',
-      'autoScale2d', 'resetScale2d', 'hoverClosestCartesian',
-      'hoverCompareCartesian', 'toggleSpikelines'
+      'autoScale2d', 'resetScale2d', 
+      'hoverClosestCartesian', 'hoverCompareCartesian', 
+      'toggleSpikelines'
     )
   )
 
 ```
 
 
-### **Hospitalizados en Sonora**
+### **Letalidad acumulada en Sonora por fecha de publicación**
 
 ```{r}
-dia <- inicio.tendencias
-fecha <- c()
-Hospitalizados <- c()
-Graves <- c()
 
-while( dia <= hoy){
-  tmp <- read.csv(paste("../data/acc/acumulado-", format(dia, "%d-%m-%Y"), ".csv", sep=''))
-  fecha <- append(fecha, dia)
-  Hospitalizados <- append( Hospitalizados, last(tmp$Hospitalizados))
-  Graves <- append( Graves, last(tmp$Graves))
-  dia <- dia + 1
-}
-
-df.hosp <- data.frame(
-  Fecha = fecha,
-  Hospitalizados = Hospitalizados,
-  Graves = Graves
-)
-
-plotly::plot_ly(
-  data = df.hosp, 
-  x = ~Fecha, 
-  y = ~Graves, 
-  type = "bar", 
-  name = "Graves",
-  marker = list(color = decesos_color),
-  text = ~paste(Graves, "casos graves"),
-  hoverinfo = 'text'
-) %>%
+df.tend %>%
+  filter(Fecha >= inicio.tendencias) %>%
+  plotly::plot_ly(x = ~Fecha) %>%
   plotly::add_trace(
-    y = ~ (Hospitalizados - Graves), 
-    name = "Hospitalizados",
+    y = ~Letalidad, 
+    type = 'scatter', 
+    mode = 'lines+markers', 
+    name = 'Porcentaje de Letalidad',
     marker = list(color = confirmados_color),
-    text = ~paste(Hospitalizados, "hospitalizados"),
-    hoverinfo = 'text'
+    hoverinfo = "text",
+    text = ~paste(Letalidad, '%')
   ) %>%
   plotly::layout(
-    barmode = 'stack',
-    legend = list(x=0.04, y = 0.99, opacity=0.1),
-    yaxis = list(title = "Casos", fixedrange = TRUE), 
+    yaxis = list(title = "Letalidad ( % )", fixedrange = TRUE), 
     xaxis = list(title = "", fixedrange = TRUE),
     hovermode = "compare",
     margin =  list(
-      # l = 60,
-      # r = 40,
-      b = 10,
-      t = 10,
-      pad = 2
+                   # l = 60,
+                   # r = 40,
+                   b = 10,
+                   t = 10,
+                   pad = 2
     )
   ) %>%
   plotly::config(
@@ -1688,6 +1782,70 @@ plotly::plot_ly(
       'hoverCompareCartesian', 'toggleSpikelines'
     )
   )
+
+
+# dia <- inicio.hospitaizados
+# fecha <- c()
+# Hospitalizados <- c()
+# Graves <- c()
+# 
+# while( dia <= hoy){
+#   tmp <- read.csv(paste("../data/acc/acumulado-", format(dia, "%d-%m-%Y"), ".csv", sep=''))
+#   fecha <- append(fecha, dia)
+#   Hospitalizados <- append( Hospitalizados, last(tmp$Hospitalizados))
+#   Graves <- append( Graves, last(tmp$Graves))
+#   dia <- dia + 1
+# }
+# 
+# df.hosp <- data.frame(
+#   Fecha = fecha,
+#   Hospitalizados = Hospitalizados,
+#   Graves = Graves
+# )
+# 
+# plotly::plot_ly(
+#   data = df.hosp, 
+#   x = ~Fecha, 
+#   y = ~Graves, 
+#   type = "bar", 
+#   name = "Graves",
+#   marker = list(color = decesos_color),
+#   text = ~paste(Graves, "casos graves"),
+#   hoverinfo = 'text'
+# ) %>%
+#   plotly::add_trace(
+#     y = ~ (Hospitalizados - Graves), 
+#     name = "Hospitalizados",
+#     marker = list(color = confirmados_color),
+#     text = ~paste(Hospitalizados, "hospitalizados"),
+#     hoverinfo = 'text'
+#   ) %>%
+#   plotly::layout(
+#     barmode = 'stack',
+#     legend = list(x=0.04, y = 0.99, opacity=0.1),
+#     yaxis = list(title = "Casos", fixedrange = TRUE), 
+#     xaxis = list(title = "", fixedrange = TRUE),
+#     hovermode = "compare",
+#     margin =  list(
+#       # l = 60,
+#       # r = 40,
+#       b = 10,
+#       t = 10,
+#       pad = 2
+#     )
+#   ) %>%
+#   plotly::config(
+#     displaylogo = FALSE,
+#     modeBarButtonsToRemove = list(
+#       'sendDataToCloud', 'zoom2d', 'pan2d', 'select2d','lasso2d',
+#       'zoomIn2d', 'zoomOut2d',
+#       #'toImage',
+#       'autoScale2d', 'resetScale2d', 'hoverClosestCartesian',
+#       'hoverCompareCartesian', 'toggleSpikelines'
+#     )
+#   )
+
+
 
 ```
 
@@ -1710,7 +1868,7 @@ Este tablero es un recurso elaborado por un grupo de profesores del [Departament
 
 **Datos**
 
-Los datos sobre el proceso del COVID-19 en el Estado de Sonora se reciben diariamente de la [Secretaría de Salud del Estado de Sonora](https://www.sonora.gob.mx/temas-de-interes/salud.html).
+Los datos sobre el proceso del COVID-19 en el Estado de Sonora se reciben diariamente de la [Secretaría de Salud del Estado de Sonora](https://www.sonora.gob.mx/temas-de-interes/salud.html) (SSA Sonora). Particularmente la información sobre camas ocupadas proviene del Informe Hospitalario Diario COVID19 de la SSA Sonora.
 Los datos sobre el proceso del COVID-19 de los estados de México se tomaron del [repositorio de datos mantenido por Gabriel Alfonso Carranco-Sapiéns](https://github.com/carranco-sga/Mexico-COVID-19). Esta base se actualiza cada día a partir de la información de la [SSA](https://www.gob.mx/salud). Los datos sobre la población de México se tomaron de [INEGI](https://www.inegi.org.mx/app/tabulados/interactivos/?px=Poblacion_07&bd=Poblacion).
 Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del [Centro de recursos sobre Coronavirus](https://coronavirus.jhu.edu) de la Universidad Johns Hopkins University & Medicine. Esta base de datos se actualiza cada día y se puede obtener [aquí](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data). 
 
@@ -1726,9 +1884,10 @@ Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del
 
 - *Pruebas realizadas*: cantidad de casos confirmados más cantidad de pruebas negativas
 
-- *Pruebas negativas*: cantidad pruebas que dieron negativo a SARS-CoV2
+- *Pruebas negativas*: cantidad pruebas que dieron negativo a SARS-CoV-2
 
-- *Pruebas en proceso*: cantidad pruebas que se encuentran en proceso a la espectativa del resultado 
+- *Pruebas en proceso*: cantidad pruebas que se encuentran en proceso a la espectativa del resultado.
+
 - *Incidencia*: Confirmados por cada 100 mil habitantes.
 
 - *Activos*: Pacientes que tienen una segunda muestra positiva o comenzaron síntomas hace 14 días o menos y pacientes hospitalizados
@@ -1740,9 +1899,13 @@ Los datos sobre el proceso del COVID-19 en el estado Arizona (EU) se tomaron del
 Los indicadores son calculados a partir de las siguientes fórmulas:
 
 
-$Tasa\ de\ Letalidad =  \frac{Decesos}{Confirmados} 100$
+$Tasa\ de\ Letalidad =  \frac{\mbox{Decesos}}{\mbox{Confirmados}} 100$
 
-$Tasa\ de\ Positividad =  \frac{Confirmados}{Pruebas\ realizadas} 100$
+$Tasa\ de\ Positividad =  \frac{\mbox{Confirmados}}{\mbox{Pruebas realizadas}} 100$
+
+$Positividad\ Lesp = \frac{\mbox{Pruebas positivas del día}}{\mbox{Pruebas analizadas LESP del día}} 100$
+
+LESP:  Laboratorio Estatal de Salud Pública
 
 
 ---------
