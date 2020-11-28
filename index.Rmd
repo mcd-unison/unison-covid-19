@@ -30,8 +30,8 @@ dir.danica <- paste("../data/BASE COVID-19-19.NOV.20-BM.xlsx")
 carranco <- TRUE
 
 # El dia de hoy (para los archivos)
-hoy <- Sys.Date()
-hoy.jh <- format(hoy-1, "%m-%d-%Y")
+hoy <- Sys.Date() - 1
+hoy.jh <- format(hoy, "%m-%d-%Y")
 inicio.hospitaizados <- as.Date("2020-08-05")
 dia <- as.Date("2020-04-07")
 
